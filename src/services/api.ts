@@ -7,6 +7,7 @@ import type {
   PaginationMeta,
   CartSet,
   CartItem,
+  User,
 } from '../types'
 
 // API 기본 URL (환경 변수로 관리)

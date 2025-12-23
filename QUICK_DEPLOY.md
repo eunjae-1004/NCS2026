@@ -55,10 +55,17 @@
    - **Root Directory**: `.`
    - **Build Command**: `npm run build` (자동)
    - **Output Directory**: `dist` (자동)
-4. 환경 변수 추가:
+4. **환경 변수 추가** (중요!):
+   - 프로젝트 설정 화면에서 "Environment Variables" 섹션 찾기
    - **Key**: `VITE_API_BASE_URL`
-   - **Value**: `https://xxx.railway.app/api` (Railway에서 복사한 URL)
+   - **Value**: `https://xxx.railway.app/api` 
+     - ⚠️ **주의**: Railway URL 끝에 `/api`를 반드시 추가하세요!
+     - 예시: Railway URL이 `https://ncssearch-backend.railway.app`이면
+     - Value는 `https://ncssearch-backend.railway.app/api`로 입력
+   - **Environment**: Production, Preview 선택
 5. "Deploy" 클릭
+
+📖 **더 자세한 환경 변수 설정 방법**: `VERCEL_ENV_SETUP.md` 참고
 
 ### 3. 데이터베이스 설정 (1분)
 

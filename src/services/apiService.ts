@@ -18,6 +18,7 @@ import type {
   PaginationMeta,
   CartSet,
   CartItem,
+  User,
 } from '../types'
 
 // 개발 모드 확인 (환경 변수로 제어)
