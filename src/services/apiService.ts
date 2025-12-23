@@ -19,7 +19,7 @@ import type {
   CartSet,
   CartItem,
   User,
-} from '../types'
+} from '../types/index'
 
 // 개발 모드 확인 (환경 변수로 제어)
 const USE_MOCK_DATA = import.meta.env.VITE_USE_MOCK_DATA !== 'false'
