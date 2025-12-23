@@ -39,7 +39,7 @@ export default function LoginPage() {
     setError('')
 
     try {
-      const org = organizations.find((o) => o.id === selectedOrg)
+      const org = (organizations || []).find((o) => o.id === selectedOrg)
       const user = await register(email, password, name, org?.id)
       await setUser(user)
       navigate('/')
@@ -228,7 +228,7 @@ export default function LoginPage() {
               >
                 <span className="text-gray-700">
                   {selectedOrg
-                    ? organizations.find((o) => o.id === selectedOrg)?.name
+                    ? (organizations || []).find((o) => o.id === selectedOrg)?.name
                     : '기관 선택 (선택사항)'}
                 </span>
                 <span className="text-gray-400">▼</span>
@@ -241,7 +241,7 @@ export default function LoginPage() {
                       <Loading message="기관 목록 로딩 중..." />
                     </div>
                   ) : (
-                    organizations.map((org) => (
+                    (organizations || []).map((org) => (
                       <button
                         key={org.id}
                         type="button"

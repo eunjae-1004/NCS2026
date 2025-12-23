@@ -4,7 +4,6 @@ import { Send, ChevronDown } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { mapAlias, getStandardCodes } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
-import Loading from '../components/Loading'
 import ErrorMessage from '../components/ErrorMessage'
 import type { AliasMapping } from '../types'
 

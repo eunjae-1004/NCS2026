@@ -6,12 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     // 프로덕션 빌드 최적화
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // 프로덕션에서 console.log 제거
-      },
-    },
+    minify: 'esbuild', // terser 대신 esbuild 사용 (더 빠르고 의존성 불필요)
     // 청크 크기 경고 임계값 설정
     chunkSizeWarningLimit: 1000,
   },
