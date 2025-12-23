@@ -1,0 +1,24 @@
+{
+  "name": "ncs-api-server",
+  "version": "1.0.0",
+  "description": "NCS 능력단위 검색 시스템 API 서버",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "test-db": "node test-db-connection.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17"
+  }
+}
+
+
