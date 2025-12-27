@@ -22,6 +22,7 @@ export default function LoginPage() {
   const {
     data: organizations = [],
     loading: orgsLoading,
+    error: orgsError,
   } = useAsync(getOrganizations, { immediate: true })
 
   const handleRegister = async () => {
@@ -239,6 +240,18 @@ export default function LoginPage() {
                   {orgsLoading ? (
                     <div className="px-4 py-2 text-center text-gray-500">
                       <Loading message="기관 목록 로딩 중..." />
+                    </div>
+                  ) : orgsError ? (
+                    <div className="px-4 py-2 text-center text-red-500 text-sm">
+                      기관 목록을 불러올 수 없습니다.
+                      <br />
+                      <span className="text-xs text-gray-400">
+                        {orgsError instanceof Error ? orgsError.message : '알 수 없는 오류'}
+                      </span>
+                    </div>
+                  ) : (organizations || []).length === 0 ? (
+                    <div className="px-4 py-2 text-center text-gray-500 text-sm">
+                      등록된 기관이 없습니다.
                     </div>
                   ) : (
                     (organizations || []).map((org) => (

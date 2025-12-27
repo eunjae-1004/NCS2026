@@ -272,6 +272,15 @@ export async function getOrganizations(): Promise<Organization[]> {
   if (response.success && response.data) {
     return response.data
   }
+  
+  // API 호출 실패 시 에러 throw (useAsync가 에러를 감지할 수 있도록)
+  // 기관 선택은 선택사항이지만, 에러가 발생했음을 사용자에게 알려야 함
+  if (response.error) {
+    console.error('기관 목록 조회 실패:', response.error)
+    throw new Error(response.error)
+  }
+  
+  // 성공했지만 데이터가 없는 경우
   return []
 }
 

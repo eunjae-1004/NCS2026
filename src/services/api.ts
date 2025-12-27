@@ -66,9 +66,18 @@ async function fetchApi<T>(
     return { success: true, data: jsonData as T }
   } catch (error) {
     console.error('fetchApi 오류:', error)
+    
+    // 네트워크 에러인 경우 더 명확한 메시지 제공
+    let errorMessage = 'Unknown error'
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      errorMessage = `서버에 연결할 수 없습니다. API URL을 확인해주세요: ${API_BASE_URL}`
+    } else if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
     }
   }
 }
