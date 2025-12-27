@@ -82,3 +82,5 @@ Vercel에서:
    - Vercel → Settings → Environment Variables
    - 필요한 환경 변수가 모두 설정되어 있는지 확인
 
+
+

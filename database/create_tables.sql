@@ -1,10 +1,15 @@
+-- ============================================
 -- NCS 능력단위 검색 시스템 데이터베이스 스키마
 -- PostgreSQL
+-- 모든 테이블 생성 스크립트 (통합 버전)
+-- ============================================
 
 -- 데이터베이스 생성 (필요시)
 -- CREATE DATABASE ncs_search;
 
+-- ============================================
 -- 확장 기능 활성화
+-- ============================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================
@@ -38,10 +43,10 @@ CREATE INDEX IF NOT EXISTS idx_ncs_main_unit_element_level ON ncs_main(unit_elem
 -- ============================================
 -- 2. 능력단위 정의 테이블: unit_definition
 -- ============================================
--- unit_code는 ncs_main에서 UNIQUE하지 않으므로 외래 키 제약 조건 제거
--- 대신 애플리케이션 레벨에서 데이터 무결성 관리
+-- unit_code는 중복될 수 있으므로 UNIQUE 제약 조건 없음
 CREATE TABLE IF NOT EXISTS unit_definition (
-    unit_code VARCHAR(30) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    unit_code VARCHAR(30) NOT NULL,
     unit_name VARCHAR(255) NOT NULL,
     unit_definition TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -50,12 +55,11 @@ CREATE TABLE IF NOT EXISTS unit_definition (
 
 -- 인덱스 생성
 CREATE INDEX IF NOT EXISTS idx_unit_definition_name ON unit_definition(unit_name);
+CREATE INDEX IF NOT EXISTS idx_unit_definition_unit_code ON unit_definition(unit_code);
 
 -- ============================================
 -- 3. 수행준거 테이블: performance_criteria
 -- ============================================
--- unit_code와 unit_element_code는 ncs_main에서 UNIQUE하지 않으므로 외래 키 제약 조건 제거
--- 대신 애플리케이션 레벨에서 데이터 무결성 관리
 CREATE TABLE IF NOT EXISTS performance_criteria (
     id SERIAL PRIMARY KEY,
     unit_code VARCHAR(30) NOT NULL,
@@ -70,7 +74,7 @@ CREATE INDEX IF NOT EXISTS idx_performance_criteria_unit_code ON performance_cri
 CREATE INDEX IF NOT EXISTS idx_performance_criteria_unit_element_code ON performance_criteria(unit_element_code);
 
 -- ============================================
--- 3-1. 지식/기술/태도 테이블: ksa
+-- 4. 지식/기술/태도 테이블: ksa
 -- ============================================
 CREATE TABLE IF NOT EXISTS ksa (
     id SERIAL PRIMARY KEY,
@@ -88,7 +92,7 @@ CREATE INDEX IF NOT EXISTS idx_ksa_unit_element_code ON ksa(unit_element_code);
 CREATE INDEX IF NOT EXISTS idx_ksa_type ON ksa(type);
 
 -- ============================================
--- 4. 세부분류 테이블: subcategory
+-- 5. 세부분류 테이블: subcategory
 -- ============================================
 CREATE TABLE IF NOT EXISTS subcategory (
     sub_category_code VARCHAR(20) PRIMARY KEY,
@@ -102,19 +106,7 @@ CREATE TABLE IF NOT EXISTS subcategory (
 CREATE INDEX IF NOT EXISTS idx_subcategory_name ON subcategory(sub_category_name);
 
 -- ============================================
--- 5. 사용자 테이블 (기존 요구사항)
--- ============================================
-CREATE TABLE IF NOT EXISTS users (
-    id VARCHAR(255) PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    organization_id VARCHAR(255),
-    role VARCHAR(50) DEFAULT 'user',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- ============================================
--- 6. 기관 테이블
+-- 6. 기관 테이블: organizations
 -- ============================================
 CREATE TABLE IF NOT EXISTS organizations (
     id VARCHAR(255) PRIMARY KEY,
@@ -125,9 +117,26 @@ CREATE TABLE IF NOT EXISTS organizations (
 );
 
 -- ============================================
--- 7. 선택 이력 테이블 (기존 요구사항)
+-- 7. 사용자 테이블: users
 -- ============================================
--- unit_code는 ncs_main에서 UNIQUE하지 않으므로 외래 키 제약 조건 제거
+-- 인증 기능 포함 (email, password_hash)
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) UNIQUE,
+    password_hash VARCHAR(255),
+    organization_id VARCHAR(255),
+    role VARCHAR(50) DEFAULT 'guest',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 인덱스 생성
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+-- ============================================
+-- 8. 선택 이력 테이블: selection_history
+-- ============================================
 CREATE TABLE IF NOT EXISTS selection_history (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
@@ -143,9 +152,9 @@ CREATE INDEX IF NOT EXISTS idx_selection_history_unit_code ON selection_history(
 CREATE INDEX IF NOT EXISTS idx_selection_history_selected_at ON selection_history(selected_at);
 
 -- ============================================
--- 8. 장바구니 테이블
+-- 9. 선택목록 아이템 테이블: cart_items
 -- ============================================
--- unit_code는 ncs_main에서 UNIQUE하지 않으므로 외래 키 제약 조건 제거
+-- (장바구니 → 선택목록으로 변경)
 CREATE TABLE IF NOT EXISTS cart_items (
     id SERIAL PRIMARY KEY,
     user_id VARCHAR(255) NOT NULL,
@@ -161,7 +170,7 @@ CREATE INDEX IF NOT EXISTS idx_cart_items_user_id ON cart_items(user_id);
 CREATE INDEX IF NOT EXISTS idx_cart_items_unit_code ON cart_items(unit_code);
 
 -- ============================================
--- 9. 장바구니 세트 테이블
+-- 10. 선택목록 세트 테이블: cart_sets
 -- ============================================
 CREATE TABLE IF NOT EXISTS cart_sets (
     id VARCHAR(255) PRIMARY KEY,
@@ -172,9 +181,8 @@ CREATE TABLE IF NOT EXISTS cart_sets (
 );
 
 -- ============================================
--- 10. 장바구니 세트 아이템 테이블
+-- 11. 선택목록 세트 아이템 테이블: cart_set_items
 -- ============================================
--- unit_code는 ncs_main에서 UNIQUE하지 않으므로 외래 키 제약 조건 제거
 CREATE TABLE IF NOT EXISTS cart_set_items (
     id SERIAL PRIMARY KEY,
     cart_set_id VARCHAR(255) NOT NULL,
@@ -187,7 +195,7 @@ CREATE TABLE IF NOT EXISTS cart_set_items (
 CREATE INDEX IF NOT EXISTS idx_cart_set_items_cart_set_id ON cart_set_items(cart_set_id);
 
 -- ============================================
--- 11. 별칭 매핑 테이블 (별칭 → 표준 코드)
+-- 12. 별칭 매핑 테이블: alias_mapping
 -- ============================================
 CREATE TABLE IF NOT EXISTS alias_mapping (
     id SERIAL PRIMARY KEY,
@@ -205,7 +213,7 @@ CREATE INDEX IF NOT EXISTS idx_alias_mapping_alias ON alias_mapping(alias);
 CREATE INDEX IF NOT EXISTS idx_alias_mapping_type ON alias_mapping(mapping_type);
 
 -- ============================================
--- 12. 표준 코드 테이블
+-- 13. 표준 코드 테이블: standard_codes
 -- ============================================
 CREATE TABLE IF NOT EXISTS standard_codes (
     id SERIAL PRIMARY KEY,

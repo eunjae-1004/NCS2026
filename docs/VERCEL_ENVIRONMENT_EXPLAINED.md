@@ -291,3 +291,5 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000
 - ✅ 같은 백엔드 URL 사용
 - ✅ 간단하고 관리하기 쉬움
 
+
+
