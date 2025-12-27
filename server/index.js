@@ -52,7 +52,8 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 // Vercel 도메인 패턴 (프로덕션 환경)
 const vercelPattern = /^https:\/\/.*\.vercel\.app$/
 
-app.use(cors({
+// CORS 옵션 설정
+const corsOptions = {
   origin: (origin, callback) => {
     // origin이 없거나 (같은 도메인 요청, Postman 등) 허용
     if (!origin) {
@@ -83,9 +84,26 @@ app.use(cors({
     callback(new Error('CORS 정책에 의해 차단되었습니다.'))
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}))
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers',
+  ],
+  exposedHeaders: ['Content-Length', 'Content-Type'],
+  optionsSuccessStatus: 200, // 일부 브라우저를 위한 설정
+  preflightContinue: false, // preflight 요청을 다음 핸들러로 전달하지 않음
+  maxAge: 86400, // preflight 요청 캐시 시간 (24시간)
+}
+
+app.use(cors(corsOptions))
+
+// OPTIONS 요청을 명시적으로 처리 (추가 보안)
+app.options('*', cors(corsOptions))
 app.use(express.json())
 
 // 루트 경로 - API 서버 안내
