@@ -51,14 +51,17 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
-    // origin이 없거나 (같은 도메인 요청) null (로컬 파일) 또는 허용된 origin이면 통과
-    if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
+    // origin이 없거나 (같은 도메인 요청) null/undefined (로컬 파일) 또는 허용된 origin이면 통과
+    // 로컬 파일 테스트를 위해 null origin도 허용
+    if (!origin || origin === 'null' || origin === null || allowedOrigins.includes(origin)) {
       callback(null, true)
     } else {
       callback(new Error('CORS 정책에 의해 차단되었습니다.'))
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }))
 app.use(express.json())
 
