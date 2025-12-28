@@ -168,9 +168,21 @@ router.post('/', async (req, res) => {
     // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
     const unitCodeStr = String(unitCode)
     
+    // 디버깅: 전달되는 데이터 타입 확인
+    console.log('장바구니 추가 요청:', {
+      userId: userId,
+      userIdType: typeof userId,
+      unitCode: unitCode,
+      unitCodeType: typeof unitCode,
+      unitCodeStr: unitCodeStr,
+      unitCodeStrType: typeof unitCodeStr,
+      memo: memo,
+      memoType: typeof memo,
+    })
+    
     const insertQuery = `
       INSERT INTO cart_items (user_id, unit_code, memo, added_at)
-      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      VALUES ($1, $2::VARCHAR, $3, CURRENT_TIMESTAMP)
       ON CONFLICT (user_id, unit_code) DO UPDATE
       SET memo = COALESCE(EXCLUDED.memo, cart_items.memo),
           added_at = CURRENT_TIMESTAMP
@@ -228,7 +240,7 @@ router.post('/multiple', async (req, res) => {
       const unitCodeStr = String(item.abilityUnit.code || item.abilityUnit.id)
       return query(
         `INSERT INTO cart_items (user_id, unit_code, memo, added_at)
-         VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+         VALUES ($1, $2::VARCHAR, $3, CURRENT_TIMESTAMP)
          ON CONFLICT (user_id, unit_code) DO NOTHING`,
         [userId, unitCodeStr, item.memo || null]
       )
@@ -267,7 +279,7 @@ router.delete('/:unitCode', async (req, res) => {
 
     const deleteQuery = `
       DELETE FROM cart_items
-      WHERE user_id = $1 AND unit_code = $2
+      WHERE user_id = $1 AND unit_code = $2::VARCHAR
     `
 
     await query(deleteQuery, [userId, unitCodeStr])
@@ -304,7 +316,7 @@ router.put('/:unitCode/memo', async (req, res) => {
     const updateQuery = `
       UPDATE cart_items
       SET memo = $1
-      WHERE user_id = $2 AND unit_code = $3
+      WHERE user_id = $2 AND unit_code = $3::VARCHAR
       RETURNING id, unit_code, memo
     `
 
