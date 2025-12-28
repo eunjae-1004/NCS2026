@@ -231,8 +231,10 @@ if (dbConnected && abilityUnitsRouter && historyRouter) {
     app.use('/api/cart-sets', cartSetsRouter)
     app.use('/api/cart', cartRouter)
     app.use('/api/auth', authRouter)
+    console.log('✅ 추가 라우트 등록 완료: organizations, standard-codes, alias, recommendations, cart-sets, cart, auth')
   } catch (error) {
-    console.warn('추가 라우트 로드 실패:', error.message)
+    console.error('❌ 추가 라우트 로드 실패:', error.message)
+    console.error('   상세 에러:', error)
   }
 } else {
   console.log('📝 Mock 데이터 모드로 API 서버 실행 중')
