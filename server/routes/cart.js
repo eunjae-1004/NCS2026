@@ -168,17 +168,15 @@ router.post('/', async (req, res) => {
     // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
     const unitCodeStr = String(unitCode)
     
-    // 디버깅: 전달되는 데이터 타입 확인
-    console.log('장바구니 추가 요청:', {
-      userId: userId,
-      userIdType: typeof userId,
-      unitCode: unitCode,
-      unitCodeType: typeof unitCode,
-      unitCodeStr: unitCodeStr,
-      unitCodeStrType: typeof unitCodeStr,
-      memo: memo,
-      memoType: typeof memo,
-    })
+    // 디버깅: 개발 환경에서만 상세 로그 출력 (rate limit 방지)
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('장바구니 추가 요청:', {
+        userId,
+        unitCode,
+        unitCodeType: typeof unitCode,
+        unitCodeStr,
+      })
+    }
     
     const insertQuery = `
       INSERT INTO cart_items (user_id, unit_code, memo, added_at)
