@@ -6,16 +6,39 @@ dotenv.config()
 
 const { Pool } = pg
 
+// 데이터베이스 연결 설정
+// Railway 등에서 제공하는 DATABASE_URL을 우선 사용
+// 없으면 개별 환경 변수 사용
+console.log('🔍 데이터베이스 연결 설정 확인:')
+console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '없음')
+console.log('   DB_HOST:', process.env.DB_HOST || '없음')
+console.log('   NODE_ENV:', process.env.NODE_ENV || '없음')
+
+const poolConfig = process.env.DATABASE_URL
+  ? {
+      connectionString: process.env.DATABASE_URL,
+      // Railway 내부 네트워크에서는 SSL이 필요하지 않을 수 있음
+      // 하지만 설정해도 문제없음
+      ssl: process.env.DATABASE_URL.includes('railway.internal')
+        ? false  // 내부 네트워크는 SSL 불필요
+        : (process.env.NODE_ENV === 'production' 
+          ? { rejectUnauthorized: false } 
+          : false),
+    }
+  : {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'ncs_search',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || '',
+    }
+
 // 데이터베이스 연결 풀 생성
 const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'ncs_search',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || '',
+  ...poolConfig,
   max: 20, // 최대 연결 수
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 10000, // 타임아웃을 10초로 증가
 })
 
 // 연결 테스트

@@ -20,8 +20,15 @@ try {
     console.log('✅ PostgreSQL 데이터베이스 연결 성공')
   }
 } catch (error) {
-  console.warn('⚠️ 데이터베이스 연결 실패. Mock 데이터 모드로 동작합니다.')
-  console.warn('   환경 변수를 확인하세요: DB_HOST, DB_NAME, DB_USER, DB_PASSWORD')
+  console.error('❌ 데이터베이스 연결 실패. Mock 데이터 모드로 동작합니다.')
+  console.error('   에러 메시지:', error.message)
+  console.error('   에러 코드:', error.code)
+  console.error('   환경 변수 확인:')
+  console.error('     DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '없음')
+  console.error('     DB_HOST:', process.env.DB_HOST || '없음')
+  console.error('     DB_NAME:', process.env.DB_NAME || '없음')
+  console.error('     DB_USER:', process.env.DB_USER || '없음')
+  console.error('     DB_PASSWORD:', process.env.DB_PASSWORD ? '설정됨' : '없음')
   dbConnected = false
 }
 
