@@ -46,64 +46,20 @@ process.on('uncaughtException', (err) => {
 // 미들웨어
 // CORS 설정 (프로덕션 환경에서 프론트엔드 도메인 허용)
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  ? process.env.ALLOWED_ORIGINS.split(',')
   : ['http://localhost:5173', 'http://localhost:3000']
 
-// Vercel 도메인 패턴 (프로덕션 환경)
-const vercelPattern = /^https:\/\/.*\.vercel\.app$/
-
-// CORS 옵션 설정
-const corsOptions = {
+app.use(cors({
   origin: (origin, callback) => {
-    // origin이 없거나 (같은 도메인 요청, Postman 등) 허용
-    if (!origin) {
+    // origin이 없거나 (같은 도메인 요청) null (로컬 파일) 또는 허용된 origin이면 통과
+    if (!origin || origin === 'null' || allowedOrigins.includes(origin)) {
       callback(null, true)
-      return
+    } else {
+      callback(new Error('CORS 정책에 의해 차단되었습니다.'))
     }
-    
-    // 허용된 origin 목록에 있으면 통과
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true)
-      return
-    }
-    
-    // Vercel 도메인인 경우 허용 (프로덕션 환경)
-    if (vercelPattern.test(origin)) {
-      callback(null, true)
-      return
-    }
-    
-    // 개발 환경에서는 모든 origin 허용 (선택사항)
-    if (process.env.NODE_ENV !== 'production') {
-      callback(null, true)
-      return
-    }
-    
-    // 그 외의 경우 차단
-    console.warn(`CORS 차단: ${origin}`)
-    callback(new Error('CORS 정책에 의해 차단되었습니다.'))
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Request-Method',
-    'Access-Control-Request-Headers',
-  ],
-  exposedHeaders: ['Content-Length', 'Content-Type'],
-  optionsSuccessStatus: 200, // 일부 브라우저를 위한 설정
-  preflightContinue: false, // preflight 요청을 다음 핸들러로 전달하지 않음
-  maxAge: 86400, // preflight 요청 캐시 시간 (24시간)
-}
-
-app.use(cors(corsOptions))
-
-// OPTIONS 요청을 명시적으로 처리 (추가 보안)
-app.options('*', cors(corsOptions))
+}))
 app.use(express.json())
 
 // 루트 경로 - API 서버 안내
