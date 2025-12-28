@@ -9,13 +9,10 @@ const { Pool } = pg
 // 데이터베이스 연결 설정
 // Railway 등에서 제공하는 DATABASE_URL을 우선 사용
 // 없으면 개별 환경 변수 사용
-// 프로덕션에서는 상세 로그 출력하지 않음 (rate limit 방지)
-if (process.env.NODE_ENV !== 'production') {
-  console.log('🔍 데이터베이스 연결 설정 확인:')
-  console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '없음')
-  console.log('   DB_HOST:', process.env.DB_HOST || '없음')
-  console.log('   NODE_ENV:', process.env.NODE_ENV || '없음')
-}
+console.log('🔍 데이터베이스 연결 설정 확인:')
+console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '없음')
+console.log('   DB_HOST:', process.env.DB_HOST || '없음')
+console.log('   NODE_ENV:', process.env.NODE_ENV || '없음')
 
 const poolConfig = process.env.DATABASE_URL
   ? {
@@ -55,14 +52,17 @@ pool.on('error', (err) => {
 
 // 쿼리 헬퍼 함수
 export const query = async (text, params) => {
+  const start = Date.now()
   try {
     const res = await pool.query(text, params)
-    // 프로덕션에서는 쿼리 로그를 출력하지 않음 (rate limit 방지)
-    // 개발 환경에서만 상세 로그 출력
+    const duration = Date.now() - start
+    // 프로덕션에서는 쿼리 로그 비활성화 (rate limit 방지)
+    if (process.env.NODE_ENV !== 'production' && duration > 1000) {
+      console.log('쿼리 실행 (느림):', { text: text.substring(0, 100), duration, rows: res.rowCount })
+    }
     return res
   } catch (error) {
-    // 에러는 항상 로그 출력 (중요)
-    console.error('쿼리 오류:', error.message)
+    console.error('쿼리 오류:', error)
     throw error
   }
 }
