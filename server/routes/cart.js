@@ -166,7 +166,22 @@ router.post('/', async (req, res) => {
 
     // 중복 확인 및 추가 (ON CONFLICT로 중복 방지)
     // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
-    const unitCodeStr = String(unitCode)
+    // null, undefined 체크 및 문자열 변환
+    if (unitCode === null || unitCode === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'unitCode가 필요합니다.',
+      })
+    }
+    
+    const unitCodeStr = String(unitCode).trim()
+    
+    if (!unitCodeStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'unitCode가 유효하지 않습니다.',
+      })
+    }
     
     // 디버깅: 개발 환경에서만 상세 로그 출력 (rate limit 방지)
     if (process.env.NODE_ENV !== 'production') {
@@ -175,6 +190,7 @@ router.post('/', async (req, res) => {
         unitCode,
         unitCodeType: typeof unitCode,
         unitCodeStr,
+        unitCodeStrType: typeof unitCodeStr,
       })
     }
     
