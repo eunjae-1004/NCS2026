@@ -165,6 +165,9 @@ router.post('/', async (req, res) => {
     await query(userCheckQuery, [userId, userId]) // 이름은 일단 userId로 설정
 
     // 중복 확인 및 추가 (ON CONFLICT로 중복 방지)
+    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
+    const unitCodeStr = String(unitCode)
+    
     const insertQuery = `
       INSERT INTO cart_items (user_id, unit_code, memo, added_at)
       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
@@ -174,7 +177,7 @@ router.post('/', async (req, res) => {
       RETURNING id, unit_code, memo, added_at
     `
 
-    const result = await query(insertQuery, [userId, unitCode, memo || null])
+    const result = await query(insertQuery, [userId, unitCodeStr, memo || null])
 
     res.json({
       success: true,
@@ -220,12 +223,14 @@ router.post('/multiple', async (req, res) => {
     }
 
     // 여러 아이템 추가 (중복 시 무시)
+    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
     const insertQueries = items.map((item) => {
+      const unitCodeStr = String(item.abilityUnit.code || item.abilityUnit.id)
       return query(
         `INSERT INTO cart_items (user_id, unit_code, memo, added_at)
          VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
          ON CONFLICT (user_id, unit_code) DO NOTHING`,
-        [userId, item.abilityUnit.code, item.memo || null]
+        [userId, unitCodeStr, item.memo || null]
       )
     })
 
@@ -257,12 +262,15 @@ router.delete('/:unitCode', async (req, res) => {
       })
     }
 
+    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
+    const unitCodeStr = String(unitCode)
+
     const deleteQuery = `
       DELETE FROM cart_items
       WHERE user_id = $1 AND unit_code = $2
     `
 
-    await query(deleteQuery, [userId, unitCode])
+    await query(deleteQuery, [userId, unitCodeStr])
 
     res.json({
       success: true,
@@ -290,6 +298,9 @@ router.put('/:unitCode/memo', async (req, res) => {
       })
     }
 
+    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
+    const unitCodeStr = String(unitCode)
+
     const updateQuery = `
       UPDATE cart_items
       SET memo = $1
@@ -297,7 +308,7 @@ router.put('/:unitCode/memo', async (req, res) => {
       RETURNING id, unit_code, memo
     `
 
-    const result = await query(updateQuery, [memo || null, userId, unitCode])
+    const result = await query(updateQuery, [memo || null, userId, unitCodeStr])
 
     if (result.rows.length === 0) {
       return res.status(404).json({
