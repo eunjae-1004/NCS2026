@@ -181,27 +181,46 @@ router.get('/', async (req, res) => {
     }
 
     // 결과를 AbilityUnit 형식으로 변환
-    const abilityUnits = result.rows.map((row) => ({
-      id: row.unit_code,
-      code: row.unit_code,
-      name: row.unit_name,
-      summary: row.definition
-        ? row.definition.substring(0, 100) + '...'
-        : row.unit_name,
-      definition: row.definition || '',
-      industry: row.major_category_name,
-      department: row.sub_category_name,
-      jobCategory: row.small_category_name,
-      smallCategoryCode: row.small_category_code, // 세분류 코드
-      subCategoryCode: row.sub_category_code, // 소분류 코드 추가
-      level: row.unit_level,
-      elements: [],
-      performanceCriteria: [],
-      knowledge: [],
-      skills: [],
-      attitudes: [],
-      keywords: [],
-    }))
+    const abilityUnits = result.rows.map((row) => {
+      // 디버깅: 첫 번째 결과만 로그 출력
+      if (result.rows.indexOf(row) === 0) {
+        console.log('=== 검색 결과 첫 번째 항목 디버깅 ===')
+        console.log('DB에서 가져온 원본 데이터:', {
+          unit_code: row.unit_code,
+          major_category_name: row.major_category_name,
+          sub_category_name: row.sub_category_name,
+          small_category_name: row.small_category_name,
+          major_category_name_type: typeof row.major_category_name,
+          sub_category_name_type: typeof row.sub_category_name,
+          major_category_name_is_null: row.major_category_name === null,
+          sub_category_name_is_null: row.sub_category_name === null,
+          major_category_name_is_empty: row.major_category_name === '',
+          sub_category_name_is_empty: row.sub_category_name === '',
+        })
+      }
+      
+      return {
+        id: row.unit_code,
+        code: row.unit_code,
+        name: row.unit_name,
+        summary: row.definition
+          ? row.definition.substring(0, 100) + '...'
+          : row.unit_name,
+        definition: row.definition || '',
+        industry: row.major_category_name || null,
+        department: row.sub_category_name || null,
+        jobCategory: row.small_category_name || null,
+        smallCategoryCode: row.small_category_code, // 세분류 코드
+        subCategoryCode: row.sub_category_code, // 소분류 코드 추가
+        level: row.unit_level,
+        elements: [],
+        performanceCriteria: [],
+        knowledge: [],
+        skills: [],
+        attitudes: [],
+        keywords: [],
+      }
+    })
 
     // 페이지네이션 메타데이터
     const totalPages = Math.ceil(total / limitNum)
@@ -264,8 +283,18 @@ router.get('/:id', async (req, res) => {
     }
 
     const unit = unitResult.rows[0]
-    console.log('상세 조회 - 조회된 데이터:', {
+    console.log('=== 상세 조회 - 조회된 데이터 ===')
+    console.log('DB에서 가져온 원본 데이터:', {
       unit_code: unit.unit_code,
+      major_category_name: unit.major_category_name,
+      sub_category_name: unit.sub_category_name,
+      small_category_name: unit.small_category_name,
+      major_category_name_type: typeof unit.major_category_name,
+      sub_category_name_type: typeof unit.sub_category_name,
+      major_category_name_is_null: unit.major_category_name === null,
+      sub_category_name_is_null: unit.sub_category_name === null,
+      major_category_name_is_empty: unit.major_category_name === '',
+      sub_category_name_is_empty: unit.sub_category_name === '',
       small_category_code: unit.small_category_code,
       small_category_code_length: unit.small_category_code?.length,
       small_category_code_type: typeof unit.small_category_code,
@@ -343,9 +372,9 @@ router.get('/:id', async (req, res) => {
         ? unit.unit_definition.substring(0, 100) + '...'
         : unit.unit_name,
       definition: unit.unit_definition || '',
-      industry: unit.major_category_name,
-      department: unit.sub_category_name,
-      jobCategory: unit.small_category_name,
+      industry: unit.major_category_name || null,
+      department: unit.sub_category_name || null,
+      jobCategory: unit.small_category_name || null,
       smallCategoryCode: unit.small_category_code, // 세분류 코드
       subCategoryCode: unit.sub_category_code, // 소분류 코드 추가
       level: unit.unit_level,
@@ -365,6 +394,13 @@ router.get('/:id', async (req, res) => {
       attitudes,
       keywords: [],
     }
+    
+    console.log('=== 상세 조회 - 응답 데이터 ===')
+    console.log('응답에 포함될 industry/department:', {
+      industry: abilityUnit.industry,
+      department: abilityUnit.department,
+      jobCategory: abilityUnit.jobCategory,
+    })
 
     res.json({ success: true, data: abilityUnit })
   } catch (error) {

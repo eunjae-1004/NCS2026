@@ -223,6 +223,22 @@ router.get('/', async (req, res) => {
         reasonType = 'recommended'
       }
 
+      // 디버깅: 첫 번째 결과만 로그 출력
+      const isFirst = recommendations.length === 0
+      if (isFirst) {
+        console.log('=== 추천 결과 첫 번째 항목 디버깅 ===')
+        console.log('DB에서 가져온 원본 데이터:', {
+          unit_code: row.unit_code,
+          major_category_name: row.major_category_name,
+          sub_category_name: row.sub_category_name,
+          small_category_name: row.small_category_name,
+          major_category_name_type: typeof row.major_category_name,
+          sub_category_name_type: typeof row.sub_category_name,
+          major_category_name_is_null: row.major_category_name === null,
+          sub_category_name_is_null: row.sub_category_name === null,
+        })
+      }
+
       return {
         abilityUnit: {
           id: row.unit_code,
@@ -232,9 +248,9 @@ router.get('/', async (req, res) => {
             ? row.definition.substring(0, 100) + '...'
             : row.unit_name,
           definition: row.definition || '',
-          industry: row.major_category_name,
-          department: row.sub_category_name,
-          jobCategory: row.small_category_name,
+          industry: row.major_category_name || null,
+          department: row.sub_category_name || null,
+          jobCategory: row.small_category_name || null,
           level: row.unit_level,
           elements: [],
           performanceCriteria: [],
