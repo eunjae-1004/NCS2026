@@ -87,63 +87,73 @@ router.get('/', async (req, res) => {
     // 3순위: 필터 조건에 맞지만 선택 이력이 없는 능력단위
 
     // 통계 뷰를 활용하여 성능 최적화
-    let usageStatsJoin = ''
-    let usageStatsCondition = ''
-    let exactMatchCondition = '0'
+    // 서브쿼리를 사용하여 GROUP BY 오류 방지
+    let usageStatsSubquery = ''
+    let exactMatchSubquery = ''
     const usageStatsParams = []
     let usageStatsParamIndex = paramIndex
     
     if (industryCode && departmentCode) {
       // 산업분야+부서 조합으로 정확히 일치하는 경우 (최우선)
-      usageStatsJoin = `
-        LEFT JOIN ability_unit_usage_stats aus ON n.unit_code = aus.unit_code
-          AND (aus.industry_code = $${usageStatsParamIndex} OR aus.industry_code IS NULL)
-          AND (aus.department_code = $${usageStatsParamIndex + 1} OR aus.department_code IS NULL)
-      `
-      usageStatsCondition = `COALESCE(
-        CASE 
-          WHEN aus.industry_code = $${usageStatsParamIndex} AND aus.department_code = $${usageStatsParamIndex + 1} 
-          THEN aus.selection_count 
-          ELSE 0 
-        END, 0
+      usageStatsSubquery = `(
+        SELECT COALESCE(aus.selection_count, 0)
+        FROM ability_unit_usage_stats aus
+        WHERE aus.unit_code = n.unit_code
+          AND aus.industry_code = $${usageStatsParamIndex}
+          AND aus.department_code = $${usageStatsParamIndex + 1}
+        LIMIT 1
       )`
-      exactMatchCondition = `CASE 
-        WHEN aus.industry_code = $${usageStatsParamIndex} AND aus.department_code = $${usageStatsParamIndex + 1} 
-        THEN 1 
-        ELSE 0 
-      END`
+      exactMatchSubquery = `(
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+        FROM ability_unit_usage_stats aus
+        WHERE aus.unit_code = n.unit_code
+          AND aus.industry_code = $${usageStatsParamIndex}
+          AND aus.department_code = $${usageStatsParamIndex + 1}
+      )`
       usageStatsParams.push(industryCode, departmentCode)
       usageStatsParamIndex += 2
     } else if (industryCode) {
       // 산업분야만 일치하는 경우
-      usageStatsJoin = `
-        LEFT JOIN ability_unit_usage_stats aus ON n.unit_code = aus.unit_code
+      usageStatsSubquery = `(
+        SELECT COALESCE(MAX(aus.selection_count), 0)
+        FROM ability_unit_usage_stats aus
+        WHERE aus.unit_code = n.unit_code
           AND aus.industry_code = $${usageStatsParamIndex}
-      `
-      usageStatsCondition = `COALESCE(aus.selection_count, 0)`
-      exactMatchCondition = `CASE WHEN aus.industry_code = $${usageStatsParamIndex} THEN 1 ELSE 0 END`
+      )`
+      exactMatchSubquery = `(
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+        FROM ability_unit_usage_stats aus
+        WHERE aus.unit_code = n.unit_code
+          AND aus.industry_code = $${usageStatsParamIndex}
+      )`
       usageStatsParams.push(industryCode)
       usageStatsParamIndex++
     } else if (departmentCode) {
       // 부서만 일치하는 경우
-      usageStatsJoin = `
-        LEFT JOIN ability_unit_usage_stats aus ON n.unit_code = aus.unit_code
+      usageStatsSubquery = `(
+        SELECT COALESCE(MAX(aus.selection_count), 0)
+        FROM ability_unit_usage_stats aus
+        WHERE aus.unit_code = n.unit_code
           AND aus.department_code = $${usageStatsParamIndex}
-      `
-      usageStatsCondition = `COALESCE(aus.selection_count, 0)`
-      exactMatchCondition = `CASE WHEN aus.department_code = $${usageStatsParamIndex} THEN 1 ELSE 0 END`
+      )`
+      exactMatchSubquery = `(
+        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+        FROM ability_unit_usage_stats aus
+        WHERE aus.unit_code = n.unit_code
+          AND aus.department_code = $${usageStatsParamIndex}
+      )`
       usageStatsParams.push(departmentCode)
       usageStatsParamIndex++
     } else {
-      // code가 없는 경우 기존 방식 사용
-      usageStatsCondition = '0'
-      exactMatchCondition = '0'
+      // code가 없는 경우
+      usageStatsSubquery = '0'
+      exactMatchSubquery = '0'
     }
 
     // usageStatsParams를 params에 추가
     params.push(...usageStatsParams)
 
-    // 5. 최종 추천 쿼리 (통계 뷰 활용)
+    // 5. 최종 추천 쿼리 (서브쿼리 활용)
     const sql = `
       SELECT DISTINCT
         n.unit_code,
@@ -155,11 +165,10 @@ router.get('/', async (req, res) => {
         n.middle_category_name,
         n.major_category_name,
         ud.unit_definition as definition,
-        ${usageStatsCondition} as selection_count,
-        ${exactMatchCondition} as exact_match_score
+        ${usageStatsSubquery} as selection_count,
+        ${exactMatchSubquery} as exact_match_score
       FROM ncs_main n
       LEFT JOIN unit_definition ud ON n.unit_code = ud.unit_code
-      ${usageStatsJoin}
       ${whereClause}
       GROUP BY n.unit_code, n.unit_name, n.unit_level, n.sub_category_code,
                n.sub_category_name, n.small_category_name, n.middle_category_name,
