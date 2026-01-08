@@ -127,9 +127,8 @@ export const useStore = create<AppState>((set) => ({
 
     try {
       // DB에 저장 (code가 없으면 id 사용)
-      // unitCode를 명시적으로 문자열로 변환 (PostgreSQL 타입 불일치 방지)
-      const unitCode = String(abilityUnit.code || abilityUnit.id)
-      console.log('선택목록 추가:', { unitCode, unitCodeType: typeof unitCode, abilityUnitId: abilityUnit.id, hasCode: !!abilityUnit.code })
+      const unitCode = abilityUnit.code || abilityUnit.id
+      console.log('선택목록 추가:', { unitCode, abilityUnitId: abilityUnit.id, hasCode: !!abilityUnit.code })
       await addCartItemApi(state.user.id, unitCode, memo)
       // 로컬 상태 업데이트
       useStore.setState({
@@ -155,8 +154,7 @@ export const useStore = create<AppState>((set) => ({
       .map((unit) => ({
         abilityUnit: {
           ...unit,
-          // code를 명시적으로 문자열로 변환 (PostgreSQL 타입 불일치 방지)
-          code: String(unit.code || unit.id),
+          code: unit.code || unit.id, // code가 없으면 id 사용
         },
         memo: undefined,
         addedAt: new Date(),

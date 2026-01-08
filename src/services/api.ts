@@ -8,7 +8,7 @@ import type {
   CartSet,
   CartItem,
   User,
-} from '../types/index'
+} from '../types'
 
 // API 기본 URL (환경 변수로 관리)
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
@@ -66,18 +66,9 @@ async function fetchApi<T>(
     return { success: true, data: jsonData as T }
   } catch (error) {
     console.error('fetchApi 오류:', error)
-    
-    // 네트워크 에러인 경우 더 명확한 메시지 제공
-    let errorMessage = 'Unknown error'
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      errorMessage = `서버에 연결할 수 없습니다. API URL을 확인해주세요: ${API_BASE_URL}`
-    } else if (error instanceof Error) {
-      errorMessage = error.message
-    }
-    
     return {
       success: false,
-      error: errorMessage,
+      error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
 }

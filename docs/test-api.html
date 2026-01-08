@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Railway API 테스트</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #0070f3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0051cc;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .success {
+      background: #d4edda;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      color: #721c24;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Railway API 테스트</h1>
+    <p>백엔드 URL: <strong>https://ncssearch-backend-production.up.railway.app</strong></p>
+    
+    <h2>1. Health Check</h2>
+    <button onclick="testHealth()">서버 상태 확인</button>
+    
+    <h2>2. 회원가입 API 테스트</h2>
+    <button onclick="testRegister()">회원가입 테스트</button>
+    
+    <h2>3. 로그인 API 테스트</h2>
+    <button onclick="testLogin()">로그인 테스트</button>
+    
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    const API_BASE = 'https://ncssearch-backend-production.up.railway.app';
+    
+    function showResult(data, isError = false) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.className = 'result ' + (isError ? 'error' : 'success');
+      resultDiv.textContent = JSON.stringify(data, null, 2);
+    }
+    
+    async function testHealth() {
+      try {
+        const response = await fetch(`${API_BASE}/`);
+        const data = await response.json();
+        showResult({
+          status: response.status,
+          statusText: response.statusText,
+          data: data
+        }, response.status !== 200);
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+    
+    async function testRegister() {
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: `test${Date.now()}@test.com`,
+            password: 'test123',
+            name: '테스트 사용자'
+          })
+        });
+        
+        // 응답이 JSON인지 확인
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          // HTML 응답인 경우
+          const text = await response.text();
+          data = {
+            error: '서버가 HTML을 반환했습니다 (JSON이 아님)',
+            status: response.status,
+            htmlPreview: text.substring(0, 500) // 처음 500자만 표시
+          };
+        }
+        
+        showResult({
+          status: response.status,
+          statusText: response.statusText,
+          url: `${API_BASE}/api/auth/register`,
+          contentType: contentType,
+          data: data
+        }, response.status !== 200);
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+    
+    async function testLogin() {
+      try {
+        const response = await fetch(`${API_BASE}/api/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: 'test@test.com',
+            password: 'test123'
+          })
+        });
+        
+        // 응답이 JSON인지 확인
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          // HTML 응답인 경우
+          const text = await response.text();
+          data = {
+            error: '서버가 HTML을 반환했습니다 (JSON이 아님)',
+            status: response.status,
+            htmlPreview: text.substring(0, 500) // 처음 500자만 표시
+          };
+        }
+        
+        showResult({
+          status: response.status,
+          statusText: response.statusText,
+          url: `${API_BASE}/api/auth/login`,
+          contentType: contentType,
+          data: data
+        }, response.status !== 200);
+      } catch (error) {
+        showResult({ error: error.message }, true);
+      }
+    }
+  </script>
+</body>
+</html>
+

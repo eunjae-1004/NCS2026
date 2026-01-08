@@ -1,13 +1,15 @@
 // 선택 이력 관련 API 라우트
 import express from 'express'
 import { query } from '../db.js'
+import { normalizeAliasesToCodes } from '../utils/aliasMapper.js'
+import { getNcsMainCodes } from '../utils/ncsMapper.js'
 
 const router = express.Router()
 
 // 선택 이력 저장
 router.post('/selections', async (req, res) => {
   try {
-    const { userId, abilityUnitId } = req.body
+    const { userId, abilityUnitId, industry, department, job } = req.body
 
     if (!userId || !abilityUnitId) {
       return res.status(400).json({
@@ -19,13 +21,56 @@ router.post('/selections', async (req, res) => {
     // unit_code 추출 (abilityUnitId가 unit_code인 경우)
     const unitCode = abilityUnitId
 
+    // 산업분야/부서/직무를 standard_codes의 code로 변환
+    let industryCode = ''
+    let departmentCode = ''
+    let jobCode = ''
+
+    if (industry || department || job) {
+      const codes = await normalizeAliasesToCodes({ industry, department, job })
+      industryCode = codes.industryCode
+      departmentCode = codes.departmentCode
+      jobCode = codes.jobCode
+    }
+
+    // code가 제공되지 않은 경우, ncs_main에서 가져온 이름을 code로 변환 (중앙화된 매핑 함수 사용)
+    if (!industryCode || !departmentCode) {
+      const ncsCodes = await getNcsMainCodes(unitCode)
+      if (!industryCode) {
+        industryCode = ncsCodes.industryCode
+      }
+      if (!departmentCode) {
+        departmentCode = ncsCodes.departmentCode
+      }
+    }
+
+    // NULL 값 처리 정책: 최소 하나의 code는 있어야 함 (산업분야 또는 부서)
+    // 둘 다 없으면 경고 로그만 남기고 저장은 진행 (데이터 누락 방지)
+    if (!industryCode && !departmentCode && !jobCode) {
+      console.warn(`선택 이력 저장: unit_code=${unitCode}에 대한 분류 코드가 없습니다.`)
+    }
+
     const insertQuery = `
-      INSERT INTO selection_history (user_id, ability_unit_id, unit_code, selected_at)
-      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-      ON CONFLICT DO NOTHING
+      INSERT INTO selection_history (
+        user_id, 
+        ability_unit_id, 
+        unit_code, 
+        industry_code,
+        department_code,
+        job_code,
+        selected_at
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
       RETURNING id
     `
-    const result = await query(insertQuery, [userId, abilityUnitId, unitCode])
+    const result = await query(insertQuery, [
+      userId, 
+      abilityUnitId, 
+      unitCode,
+      industryCode || null,
+      departmentCode || null,
+      jobCode || null
+    ])
 
     res.json({ success: true, data: { id: result.rows[0]?.id } })
   } catch (error) {
@@ -42,12 +87,19 @@ router.get('/selections/:userId', async (req, res) => {
   try {
     const { userId } = req.params
 
+    // 뷰를 사용하여 쿼리 단순화
     const selectQuery = `
       SELECT 
         ability_unit_id,
         unit_code,
-        selected_at
-      FROM selection_history
+        industry_code,
+        department_code,
+        job_code,
+        selected_at,
+        industry_name,
+        department_name,
+        job_name
+      FROM selection_history_detail
       WHERE user_id = $1
       ORDER BY selected_at DESC
       LIMIT 100
@@ -57,6 +109,12 @@ router.get('/selections/:userId', async (req, res) => {
     const history = result.rows.map((row) => ({
       abilityUnitId: row.ability_unit_id,
       unitCode: row.unit_code,
+      industryCode: row.industry_code,
+      industryName: row.industry_name,
+      departmentCode: row.department_code,
+      departmentName: row.department_name,
+      jobCode: row.job_code,
+      jobName: row.job_name,
       selectedAt: row.selected_at,
     }))
 

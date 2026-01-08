@@ -142,6 +142,10 @@ CREATE TABLE IF NOT EXISTS selection_history (
     user_id VARCHAR(255) NOT NULL,
     ability_unit_id VARCHAR(255) NOT NULL,
     unit_code VARCHAR(30),
+    -- standard_codes 테이블 구조에 맞춘 분류 코드
+    industry_code VARCHAR(50),      -- standard_codes(code, type='industries') 참조
+    department_code VARCHAR(50),   -- standard_codes(code, type='departments') 참조
+    job_code VARCHAR(50),           -- standard_codes(code, type='jobs') 참조
     selected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -150,6 +154,10 @@ CREATE TABLE IF NOT EXISTS selection_history (
 CREATE INDEX IF NOT EXISTS idx_selection_history_user_id ON selection_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_selection_history_unit_code ON selection_history(unit_code);
 CREATE INDEX IF NOT EXISTS idx_selection_history_selected_at ON selection_history(selected_at);
+CREATE INDEX IF NOT EXISTS idx_selection_history_industry_code ON selection_history(industry_code);
+CREATE INDEX IF NOT EXISTS idx_selection_history_department_code ON selection_history(department_code);
+CREATE INDEX IF NOT EXISTS idx_selection_history_job_code ON selection_history(job_code);
+CREATE INDEX IF NOT EXISTS idx_selection_history_industry_department ON selection_history(industry_code, department_code);
 
 -- ============================================
 -- 9. 선택목록 아이템 테이블: cart_items
@@ -264,6 +272,50 @@ CREATE TRIGGER update_alias_mapping_updated_at BEFORE UPDATE ON alias_mapping
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
+-- selection_history 참조 무결성 검증 트리거
+-- ============================================
+CREATE OR REPLACE FUNCTION validate_selection_history_codes()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- industry_code 검증
+  IF NEW.industry_code IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM standard_codes 
+      WHERE code = NEW.industry_code AND type = 'industries'
+    ) THEN
+      RAISE EXCEPTION 'Invalid industry_code: %. Code does not exist in standard_codes (type=industries)', NEW.industry_code;
+    END IF;
+  END IF;
+  
+  -- department_code 검증
+  IF NEW.department_code IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM standard_codes 
+      WHERE code = NEW.department_code AND type = 'departments'
+    ) THEN
+      RAISE EXCEPTION 'Invalid department_code: %. Code does not exist in standard_codes (type=departments)', NEW.department_code;
+    END IF;
+  END IF;
+  
+  -- job_code 검증
+  IF NEW.job_code IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM standard_codes 
+      WHERE code = NEW.job_code AND type = 'jobs'
+    ) THEN
+      RAISE EXCEPTION 'Invalid job_code: %. Code does not exist in standard_codes (type=jobs)', NEW.job_code;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER validate_selection_history_codes_trigger
+BEFORE INSERT OR UPDATE ON selection_history
+FOR EACH ROW EXECUTE FUNCTION validate_selection_history_codes();
+
+-- ============================================
 -- 뷰 생성 (조회 편의성)
 -- ============================================
 
@@ -297,4 +349,40 @@ SELECT
 FROM ncs_main n
 LEFT JOIN performance_criteria pc ON n.unit_element_code = pc.unit_element_code
 GROUP BY n.unit_code, n.unit_element_code, n.unit_element_name, n.unit_element_level;
+
+-- 선택 이력 상세 뷰 (standard_codes와 JOIN하여 이름 포함)
+CREATE OR REPLACE VIEW selection_history_detail AS
+SELECT 
+    sh.id,
+    sh.user_id,
+    sh.ability_unit_id,
+    sh.unit_code,
+    sh.industry_code,
+    sh.department_code,
+    sh.job_code,
+    sh.selected_at,
+    sc_i.name as industry_name,
+    sc_d.name as department_name,
+    sc_j.name as job_name
+FROM selection_history sh
+LEFT JOIN standard_codes sc_i 
+    ON sh.industry_code = sc_i.code AND sc_i.type = 'industries'
+LEFT JOIN standard_codes sc_d 
+    ON sh.department_code = sc_d.code AND sc_d.type = 'departments'
+LEFT JOIN standard_codes sc_j 
+    ON sh.job_code = sc_j.code AND sc_j.type = 'jobs';
+
+-- 산업분야+부서별 능력단위 활용 통계 뷰 (추천 로직 최적화용)
+CREATE OR REPLACE VIEW ability_unit_usage_stats AS
+SELECT 
+    sh.unit_code,
+    sh.industry_code,
+    sh.department_code,
+    sh.job_code,
+    COUNT(DISTINCT sh.id) as selection_count,
+    COUNT(DISTINCT sh.user_id) as user_count,
+    MAX(sh.selected_at) as last_selected_at
+FROM selection_history sh
+WHERE sh.industry_code IS NOT NULL OR sh.department_code IS NOT NULL
+GROUP BY sh.unit_code, sh.industry_code, sh.department_code, sh.job_code;
 
