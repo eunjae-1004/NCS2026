@@ -57,12 +57,26 @@ export default function RecommendationPage() {
     
     if (user) {
       try {
-        // 추천 페이지에서 선택한 산업분야/부서 정보를 함께 전달
+        // 우선순위: 1) abilityUnit의 정보, 2) 사용자가 선택한 정보
+        const industry = recommendation.abilityUnit?.industry || selectedIndustry || undefined
+        const department = recommendation.abilityUnit?.department || selectedDepartment || undefined
+        
+        console.log('선택 이력 저장 시도:', {
+          userId: user.id,
+          abilityUnitId: recommendation.abilityUnit.id,
+          industry,
+          department,
+          abilityUnitIndustry: recommendation.abilityUnit?.industry,
+          abilityUnitDepartment: recommendation.abilityUnit?.department,
+          selectedIndustry,
+          selectedDepartment,
+        })
+        
         await saveSelectionHistory(
           user.id, 
           recommendation.abilityUnit.id,
-          selectedIndustry || undefined,
-          selectedDepartment || undefined
+          industry,
+          department
         )
       } catch (error) {
         console.error('선택 이력 저장 실패:', error)

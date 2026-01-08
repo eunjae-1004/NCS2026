@@ -28,6 +28,14 @@ export default function AbilityDetailPage() {
     if (abilityUnit && user) {
       recordSelection(abilityUnit.id)
       // abilityUnit의 산업분야/부서 정보를 함께 전달
+      console.log('선택 이력 저장 시도 (AbilityDetailPage - useEffect):', {
+        userId: user.id,
+        abilityUnitId: abilityUnit.id,
+        industry: abilityUnit.industry,
+        department: abilityUnit.department,
+        abilityUnitKeys: Object.keys(abilityUnit),
+      })
+      
       saveSelectionHistory(
         user.id, 
         abilityUnit.id,
@@ -49,6 +57,14 @@ export default function AbilityDetailPage() {
       if (user) {
         try {
           // abilityUnit의 산업분야/부서 정보를 함께 전달
+          console.log('선택 이력 저장 시도 (AbilityDetailPage - handleAddToCart):', {
+            userId: user.id,
+            abilityUnitId: abilityUnit.id,
+            industry: abilityUnit.industry,
+            department: abilityUnit.department,
+            abilityUnitKeys: Object.keys(abilityUnit),
+          })
+          
           await saveSelectionHistory(
             user.id, 
             abilityUnit.id,

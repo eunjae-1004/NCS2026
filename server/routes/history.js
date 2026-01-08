@@ -11,6 +11,18 @@ router.post('/selections', async (req, res) => {
   try {
     const { userId, abilityUnitId, industry, department, job } = req.body
 
+    // 디버깅: 요청 본문 로그
+    console.log('=== 선택 이력 저장 요청 ===')
+    console.log('요청 본문:', { userId, abilityUnitId, industry, department, job })
+    console.log('값 타입:', {
+      industry: typeof industry,
+      department: typeof department,
+      job: typeof job,
+      industryIsEmpty: !industry || industry.trim() === '',
+      departmentIsEmpty: !department || department.trim() === '',
+      jobIsEmpty: !job || job.trim() === '',
+    })
+
     if (!userId || !abilityUnitId) {
       return res.status(400).json({
         success: false,
@@ -26,28 +38,44 @@ router.post('/selections', async (req, res) => {
     let departmentCode = ''
     let jobCode = ''
 
-    if (industry || department || job) {
-      const codes = await normalizeAliasesToCodes({ industry, department, job })
-      industryCode = codes.industryCode
-      departmentCode = codes.departmentCode
-      jobCode = codes.jobCode
+    // 빈 문자열이나 undefined/null 체크
+    const hasIndustry = industry && industry.trim() !== ''
+    const hasDepartment = department && department.trim() !== ''
+    const hasJob = job && job.trim() !== ''
+
+    if (hasIndustry || hasDepartment || hasJob) {
+      console.log('별칭 매핑 시도:', { industry, department, job })
+      const codes = await normalizeAliasesToCodes({ 
+        industry: hasIndustry ? industry : undefined,
+        department: hasDepartment ? department : undefined,
+        job: hasJob ? job : undefined
+      })
+      industryCode = codes.industryCode || ''
+      departmentCode = codes.departmentCode || ''
+      jobCode = codes.jobCode || ''
+      console.log('별칭 매핑 결과:', { industryCode, departmentCode, jobCode })
     }
 
     // code가 제공되지 않은 경우, ncs_main에서 가져온 이름을 code로 변환 (중앙화된 매핑 함수 사용)
     if (!industryCode || !departmentCode) {
+      console.log('ncs_main에서 코드 가져오기 시도:', { unitCode, industryCode, departmentCode })
       const ncsCodes = await getNcsMainCodes(unitCode)
+      console.log('ncs_main 코드 조회 결과:', ncsCodes)
       if (!industryCode) {
-        industryCode = ncsCodes.industryCode
+        industryCode = ncsCodes.industryCode || ''
       }
       if (!departmentCode) {
-        departmentCode = ncsCodes.departmentCode
+        departmentCode = ncsCodes.departmentCode || ''
       }
+      console.log('최종 코드 (ncs_main 반영 후):', { industryCode, departmentCode, jobCode })
     }
 
     // NULL 값 처리 정책: 최소 하나의 code는 있어야 함 (산업분야 또는 부서)
     // 둘 다 없으면 경고 로그만 남기고 저장은 진행 (데이터 누락 방지)
     if (!industryCode && !departmentCode && !jobCode) {
-      console.warn(`선택 이력 저장: unit_code=${unitCode}에 대한 분류 코드가 없습니다.`)
+      console.warn(`⚠️ 선택 이력 저장: unit_code=${unitCode}에 대한 분류 코드가 없습니다.`)
+    } else {
+      console.log('✅ 최종 저장될 코드:', { industryCode, departmentCode, jobCode })
     }
 
     const insertQuery = `

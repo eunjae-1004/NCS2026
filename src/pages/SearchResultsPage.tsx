@@ -224,6 +224,14 @@ export default function SearchResultsPage() {
       // DB에 선택 이력 저장 (능력단위의 산업분야/부서 정보 포함)
       if (user) {
         try {
+          console.log('선택 이력 저장 시도 (SearchResultsPage - handleAddToCart):', {
+            userId: user.id,
+            abilityUnitId: abilityUnit.id,
+            industry: abilityUnit.industry,
+            department: abilityUnit.department,
+            abilityUnitKeys: Object.keys(abilityUnit),
+          })
+          
           await saveSelectionHistory(
             user.id, 
             abilityUnit.id,
@@ -248,6 +256,14 @@ export default function SearchResultsPage() {
     // DB에 선택 이력 저장 (능력단위의 산업분야/부서 정보 포함)
     if (user) {
       try {
+        console.log('선택 이력 저장 시도 (SearchResultsPage - handleViewDetail):', {
+          userId: user.id,
+          abilityUnitId: abilityUnit.id,
+          industry: abilityUnit.industry,
+          department: abilityUnit.department,
+          abilityUnitKeys: Object.keys(abilityUnit),
+        })
+        
         await saveSelectionHistory(
           user.id, 
           abilityUnit.id,
