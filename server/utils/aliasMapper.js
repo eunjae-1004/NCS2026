@@ -55,9 +55,53 @@ export async function normalizeAliasToCode(input, type) {
     return code
   }
 
-  // 3. 매핑이 없는 경우 빈 문자열 반환 (또는 null)
-  console.warn(`⚠️ normalizeAliasToCode: "${input}" (type: ${type})에 해당하는 code를 찾을 수 없습니다.`)
-  return ''
+  // 3. 매핑이 없는 경우, standard_codes에 자동으로 추가
+  // 사용자가 입력한 값을 그대로 standard_codes에 저장하여 분석 가능하도록 함
+  const codeType = type === 'department' 
+    ? 'departments' 
+    : type === 'industry' 
+    ? 'industries' 
+    : 'jobs'
+  
+  // 코드 prefix 결정
+  const codePrefix = type === 'department' ? 'dept' : type === 'industry' ? 'ind' : 'job'
+  
+  // 기존 최대 코드 번호 찾기 (더 안전한 방법)
+  const maxCodeQuery = `
+    SELECT COALESCE(
+      MAX(
+        CASE 
+          WHEN code LIKE $1 || '_%' THEN 
+            CAST(SUBSTRING(code FROM LENGTH($1) + 2) AS INTEGER)
+          ELSE 0
+        END
+      ), 
+      0
+    ) as max_num
+    FROM standard_codes
+    WHERE type = $2
+  `
+  const maxResult = await query(maxCodeQuery, [codePrefix, codeType])
+  const maxNum = parseInt(maxResult.rows[0]?.max_num || '0', 10)
+  
+  // 새로운 코드 생성
+  const newCode = `${codePrefix}_${String(maxNum + 1).padStart(3, '0')}`
+  
+  // standard_codes에 추가 (원본 입력값을 name으로 사용)
+  // ON CONFLICT는 (code, type)이 UNIQUE이므로 발생하지 않지만, 혹시 모를 경우를 대비
+  const insertQuery = `
+    INSERT INTO standard_codes (code, name, type)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (code, type) DO UPDATE
+    SET name = EXCLUDED.name
+    RETURNING code
+  `
+  const insertResult = await query(insertQuery, [newCode, input.trim(), codeType])
+  
+  const createdCode = insertResult.rows[0]?.code || newCode
+  console.log(`✅ normalizeAliasToCode: 새로운 code 생성: "${input}" -> "${createdCode}" (type: ${type})`)
+  
+  return createdCode
 }
 
 /**
