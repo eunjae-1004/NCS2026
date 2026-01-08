@@ -149,15 +149,28 @@ export async function saveSelectionHistory(
   department?: string,
   job?: string
 ): Promise<ApiResponse<void>> {
+  // 실제 전송되는 데이터 로그
+  const requestBody = { 
+    userId, 
+    abilityUnitId,
+    industry,
+    department,
+    job
+  }
+  
+  console.log('=== API 호출: saveSelectionHistory ===')
+  console.log('전송할 데이터:', JSON.stringify(requestBody, null, 2))
+  console.log('각 필드 상세:')
+  console.log('  - userId:', userId, '(type:', typeof userId, ')')
+  console.log('  - abilityUnitId:', abilityUnitId, '(type:', typeof abilityUnitId, ')')
+  console.log('  - industry:', industry, '(type:', typeof industry, ', isUndefined:', industry === undefined, ', isNull:', industry === null, ', isEmpty:', industry === '')
+  console.log('  - department:', department, '(type:', typeof department, ', isUndefined:', department === undefined, ', isNull:', department === null, ', isEmpty:', department === '')
+  console.log('  - job:', job, '(type:', typeof job, ', isUndefined:', job === undefined, ', isNull:', job === null, ', isEmpty:', job === '')
+  console.log('JSON.stringify 결과:', JSON.stringify(requestBody))
+  
   return fetchApi<void>('/history/selections', {
     method: 'POST',
-    body: JSON.stringify({ 
-      userId, 
-      abilityUnitId,
-      industry,
-      department,
-      job
-    }),
+    body: JSON.stringify(requestBody),
   })
 }
 

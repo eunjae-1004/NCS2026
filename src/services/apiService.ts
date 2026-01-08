@@ -261,6 +261,22 @@ export async function saveSelectionHistory(
     return
   }
 
+  // apiService에서 호출 전 파라미터 확인
+  console.log('=== apiService.saveSelectionHistory 호출 ===')
+  console.log('받은 파라미터:', {
+    userId,
+    abilityUnitId,
+    industry,
+    department,
+    job,
+    industryType: typeof industry,
+    departmentType: typeof department,
+    industryIsUndefined: industry === undefined,
+    departmentIsUndefined: department === undefined,
+    industryIsNull: industry === null,
+    departmentIsNull: department === null,
+  })
+  
   const response = await api.saveSelectionHistory(userId, abilityUnitId, industry, department, job)
   if (!response.success) {
     throw new Error(response.error || '이력 저장에 실패했습니다.')

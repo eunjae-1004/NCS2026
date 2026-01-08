@@ -9,19 +9,21 @@ const router = express.Router()
 // 선택 이력 저장
 router.post('/selections', async (req, res) => {
   try {
+    // 디버깅: 원본 요청 본문 로그
+    console.log('=== 선택 이력 저장 요청 (백엔드 수신) ===')
+    console.log('원본 req.body:', JSON.stringify(req.body, null, 2))
+    console.log('req.body 타입:', typeof req.body)
+    console.log('req.body keys:', Object.keys(req.body || {}))
+    
     const { userId, abilityUnitId, industry, department, job } = req.body
 
-    // 디버깅: 요청 본문 로그
-    console.log('=== 선택 이력 저장 요청 ===')
-    console.log('요청 본문:', { userId, abilityUnitId, industry, department, job })
-    console.log('값 타입:', {
-      industry: typeof industry,
-      department: typeof department,
-      job: typeof job,
-      industryIsEmpty: !industry || industry.trim() === '',
-      departmentIsEmpty: !department || department.trim() === '',
-      jobIsEmpty: !job || job.trim() === '',
-    })
+    // 디버깅: 구조 분해 후 값 확인
+    console.log('구조 분해 후 값:')
+    console.log('  - userId:', userId, '(type:', typeof userId, ')')
+    console.log('  - abilityUnitId:', abilityUnitId, '(type:', typeof abilityUnitId, ')')
+    console.log('  - industry:', industry, '(type:', typeof industry, ', isUndefined:', industry === undefined, ', isNull:', industry === null, ', isEmpty:', industry === '', ', length:', industry?.length)')
+    console.log('  - department:', department, '(type:', typeof department, ', isUndefined:', department === undefined, ', isNull:', department === null, ', isEmpty:', department === '', ', length:', department?.length)')
+    console.log('  - job:', job, '(type:', typeof job, ', isUndefined:', job === undefined, ', isNull:', job === null, ', isEmpty:', job === '', ', length:', job?.length)
 
     if (!userId || !abilityUnitId) {
       return res.status(400).json({
