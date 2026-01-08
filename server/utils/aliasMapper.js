@@ -29,7 +29,9 @@ export async function normalizeAliasToCode(input, type) {
 
   if (mappingResult.rows.length > 0 && mappingResult.rows[0].confidence >= 0.8) {
     // 표준 코드 반환
-    return mappingResult.rows[0].standard_code
+    const code = mappingResult.rows[0].standard_code
+    console.log(`normalizeAliasToCode: alias_mapping에서 찾음: "${input}" -> "${code}" (type: ${type})`)
+    return code
   }
 
   // 2. alias_mapping이 없는 경우, standard_codes에서 직접 이름으로 조회
@@ -48,10 +50,13 @@ export async function normalizeAliasToCode(input, type) {
   const directResult = await query(directQuery, [lowerInput, codeType])
   
   if (directResult.rows.length > 0) {
-    return directResult.rows[0].code
+    const code = directResult.rows[0].code
+    console.log(`normalizeAliasToCode: standard_codes에서 직접 찾음: "${input}" -> "${code}" (type: ${type})`)
+    return code
   }
 
   // 3. 매핑이 없는 경우 빈 문자열 반환 (또는 null)
+  console.warn(`⚠️ normalizeAliasToCode: "${input}" (type: ${type})에 해당하는 code를 찾을 수 없습니다.`)
   return ''
 }
 

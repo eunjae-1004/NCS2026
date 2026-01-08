@@ -19,7 +19,17 @@ export async function mapIndustryNameToCode(industryName) {
     LIMIT 1
   `
   const result = await query(codeQuery, [industryName])
-  return result.rows[0]?.code || ''
+  const code = result.rows[0]?.code || ''
+  
+  if (!code) {
+    console.warn(`⚠️ mapIndustryNameToCode: industryName="${industryName}"에 해당하는 code를 standard_codes에서 찾을 수 없습니다.`)
+    console.log('standard_codes에서 industries 타입 조회:', {
+      searchedName: industryName,
+      availableCodes: (await query(`SELECT code, name FROM standard_codes WHERE type = 'industries' LIMIT 10`, [])).rows
+    })
+  }
+  
+  return code
 }
 
 /**
@@ -39,7 +49,17 @@ export async function mapDepartmentNameToCode(departmentName) {
     LIMIT 1
   `
   const result = await query(codeQuery, [departmentName])
-  return result.rows[0]?.code || ''
+  const code = result.rows[0]?.code || ''
+  
+  if (!code) {
+    console.warn(`⚠️ mapDepartmentNameToCode: departmentName="${departmentName}"에 해당하는 code를 standard_codes에서 찾을 수 없습니다.`)
+    console.log('standard_codes에서 departments 타입 조회:', {
+      searchedName: departmentName,
+      availableCodes: (await query(`SELECT code, name FROM standard_codes WHERE type = 'departments' LIMIT 10`, [])).rows
+    })
+  }
+  
+  return code
 }
 
 /**
@@ -88,6 +108,12 @@ export async function getNcsMainCodes(unitCode) {
 
   const row = ncsResult.rows[0]
   
+  console.log('getNcsMainCodes: ncs_main에서 가져온 값:', {
+    unitCode,
+    major_category_name: row.major_category_name,
+    sub_category_name: row.sub_category_name,
+  })
+  
   // 병렬로 code 변환
   const [industryCode, departmentCode] = await Promise.all([
     row.major_category_name 
@@ -97,6 +123,13 @@ export async function getNcsMainCodes(unitCode) {
       ? mapDepartmentNameToCode(row.sub_category_name) 
       : Promise.resolve('')
   ])
+
+  console.log('getNcsMainCodes: standard_codes로 변환된 결과:', {
+    industryCode,
+    departmentCode,
+    industryName: row.major_category_name,
+    departmentName: row.sub_category_name,
+  })
 
   return { industryCode, departmentCode }
 }
