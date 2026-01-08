@@ -221,10 +221,15 @@ export default function SearchResultsPage() {
       await addToCart(abilityUnit)
       recordSelection(abilityUnit.id)
       
-      // DB에 선택 이력 저장
+      // DB에 선택 이력 저장 (능력단위의 산업분야/부서 정보 포함)
       if (user) {
         try {
-          await saveSelectionHistory(user.id, abilityUnit.id)
+          await saveSelectionHistory(
+            user.id, 
+            abilityUnit.id,
+            abilityUnit.industry,
+            abilityUnit.department
+          )
         } catch (error) {
           console.error('선택 이력 저장 실패:', error)
         }
@@ -240,10 +245,15 @@ export default function SearchResultsPage() {
   const handleViewDetail = async (abilityUnit: any) => {
     recordSelection(abilityUnit.id)
     
-    // DB에 선택 이력 저장
+    // DB에 선택 이력 저장 (능력단위의 산업분야/부서 정보 포함)
     if (user) {
       try {
-        await saveSelectionHistory(user.id, abilityUnit.id)
+        await saveSelectionHistory(
+          user.id, 
+          abilityUnit.id,
+          abilityUnit.industry,
+          abilityUnit.department
+        )
       } catch (error) {
         console.error('선택 이력 저장 실패:', error)
       }

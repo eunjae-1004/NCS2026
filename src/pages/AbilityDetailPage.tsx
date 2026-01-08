@@ -27,7 +27,13 @@ export default function AbilityDetailPage() {
   useEffect(() => {
     if (abilityUnit && user) {
       recordSelection(abilityUnit.id)
-      saveSelectionHistory(user.id, abilityUnit.id).catch((error) => {
+      // abilityUnit의 산업분야/부서 정보를 함께 전달
+      saveSelectionHistory(
+        user.id, 
+        abilityUnit.id,
+        abilityUnit.industry,
+        abilityUnit.department
+      ).catch((error) => {
         console.error('선택 이력 저장 실패:', error)
       })
     }
@@ -42,7 +48,13 @@ export default function AbilityDetailPage() {
       
       if (user) {
         try {
-          await saveSelectionHistory(user.id, abilityUnit.id)
+          // abilityUnit의 산업분야/부서 정보를 함께 전달
+          await saveSelectionHistory(
+            user.id, 
+            abilityUnit.id,
+            abilityUnit.industry,
+            abilityUnit.department
+          )
         } catch (error) {
           console.error('선택 이력 저장 실패:', error)
         }
@@ -93,12 +105,17 @@ export default function AbilityDetailPage() {
       // 선택목록에 추가
       addMultipleToCart(result.data)
 
-      // 선택 이력 저장
+      // 선택 이력 저장 (능력단위의 산업분야/부서 정보 포함)
       if (user) {
         for (const unit of result.data) {
           try {
             recordSelection(unit.id)
-            await saveSelectionHistory(user.id, unit.id)
+            await saveSelectionHistory(
+              user.id, 
+              unit.id,
+              unit.industry,
+              unit.department
+            )
           } catch (error) {
             console.error('선택 이력 저장 실패:', error)
           }

@@ -57,7 +57,13 @@ export default function RecommendationPage() {
     
     if (user) {
       try {
-        await saveSelectionHistory(user.id, recommendation.abilityUnit.id)
+        // 추천 페이지에서 선택한 산업분야/부서 정보를 함께 전달
+        await saveSelectionHistory(
+          user.id, 
+          recommendation.abilityUnit.id,
+          selectedIndustry || undefined,
+          selectedDepartment || undefined
+        )
       } catch (error) {
         console.error('선택 이력 저장 실패:', error)
       }

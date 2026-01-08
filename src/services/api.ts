@@ -144,11 +144,20 @@ export async function getSimilarAbilityUnits(
 // 선택 이력 저장 API
 export async function saveSelectionHistory(
   userId: string,
-  abilityUnitId: string
+  abilityUnitId: string,
+  industry?: string,
+  department?: string,
+  job?: string
 ): Promise<ApiResponse<void>> {
   return fetchApi<void>('/history/selections', {
     method: 'POST',
-    body: JSON.stringify({ userId, abilityUnitId }),
+    body: JSON.stringify({ 
+      userId, 
+      abilityUnitId,
+      industry,
+      department,
+      job
+    }),
   })
 }
 

@@ -241,7 +241,10 @@ export async function getSimilarAbilityUnits(
 // 선택 이력 저장
 export async function saveSelectionHistory(
   userId: string,
-  abilityUnitId: string
+  abilityUnitId: string,
+  industry?: string,
+  department?: string,
+  job?: string
 ): Promise<void> {
   if (USE_MOCK_DATA) {
     // Mock 모드에서는 로컬 스토리지에 저장
@@ -249,13 +252,16 @@ export async function saveSelectionHistory(
     const history = JSON.parse(localStorage.getItem(key) || '[]')
     history.push({
       abilityUnitId,
+      industry,
+      department,
+      job,
       selectedAt: new Date().toISOString(),
     })
     localStorage.setItem(key, JSON.stringify(history))
     return
   }
 
-  const response = await api.saveSelectionHistory(userId, abilityUnitId)
+  const response = await api.saveSelectionHistory(userId, abilityUnitId, industry, department, job)
   if (!response.success) {
     throw new Error(response.error || '이력 저장에 실패했습니다.')
   }
