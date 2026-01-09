@@ -162,15 +162,13 @@ router.get('/', async (req, res) => {
     }
 
     // 총 개수 조회 (limit, offset 추가 전의 파라미터 사용)
-    const countParams = [...params] // 현재까지의 파라미터 복사
+    const countParams = [...params]
     const countSql = `
       SELECT COUNT(DISTINCT n.unit_code) as total
       FROM ncs_main n
       LEFT JOIN unit_definition ud ON n.unit_code = ud.unit_code
       ${whereClause}
     `
-    console.log('카운트 쿼리:', countSql)
-    console.log('카운트 파라미터:', countParams)
     const countResult = await query(countSql, countParams)
     const total = parseInt(countResult.rows[0].total) || 0
 
