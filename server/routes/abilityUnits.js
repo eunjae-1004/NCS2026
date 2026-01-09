@@ -173,14 +173,18 @@ router.get('/', async (req, res) => {
             // 검색 대상:
             // 1. 세분류명 (small_category_name)
             // 2. 능력단위명 (unit_name)
-            // 3. 능력단위요소명 (unit_element_name)
-            // 4. 능력단위 정의 (unit_definition) - NULL 처리 포함
+            // 3. 능력단위요소명 (unit_element_name) - EXISTS로 처리하여 GROUP BY 문제 해결
+            // 4. 능력단위 정의 (unit_definition)
             // 5. 수행준거 (performance_criteria)
-            // NULL 값 처리를 위해 IS NOT NULL 체크 사용
             keywordConditions.push(`(
               (n.small_category_name IS NOT NULL AND n.small_category_name ILIKE $${currentParamIndex}) OR
               (n.unit_name IS NOT NULL AND n.unit_name ILIKE $${currentParamIndex}) OR
-              (n.unit_element_name IS NOT NULL AND n.unit_element_name ILIKE $${currentParamIndex}) OR
+              EXISTS (
+                SELECT 1 FROM ncs_main n_elem
+                WHERE n_elem.unit_code = n.unit_code
+                  AND n_elem.unit_element_name IS NOT NULL
+                  AND n_elem.unit_element_name ILIKE $${currentParamIndex}
+              ) OR
               (ud.unit_definition IS NOT NULL AND ud.unit_definition ILIKE $${currentParamIndex}) OR
               EXISTS (
                 SELECT 1 FROM performance_criteria pc
@@ -273,6 +277,28 @@ router.get('/', async (req, res) => {
     
     const result = await query(sql, params)
     console.log('검색 결과 개수:', result.rows.length)
+    console.log('검색 결과 총 개수 (total):', total)
+    
+    // 키워드 검색 시 디버깅 정보 추가
+    if (hasKeywordSearch && keyword) {
+      console.log('=== 키워드 검색 디버깅 정보 ===')
+      console.log('검색 키워드:', keyword)
+      console.log('검색된 결과 개수:', result.rows.length)
+      console.log('총 개수 (COUNT):', total)
+      
+      if (result.rows.length === 0 && total === 0) {
+        console.warn('⚠️ 키워드 검색 결과가 없습니다. 다음을 확인하세요:')
+        console.warn('1. 데이터베이스에 해당 키워드가 포함된 데이터가 있는지 확인')
+        console.warn('2. 생성된 SQL 쿼리를 확인하여 검색 조건이 올바른지 확인')
+        console.warn('3. 키워드 파라미터가 올바르게 전달되었는지 확인')
+      } else if (result.rows.length > 0) {
+        console.log('✅ 검색 성공! 첫 번째 결과:', {
+          unit_code: result.rows[0].unit_code,
+          unit_name: result.rows[0].unit_name,
+          small_category_name: result.rows[0].small_category_name,
+        })
+      }
+    }
     
     // 검색 결과의 unit_code 앞 8자리 확인 (디버깅)
     if (smallCategoryCode && smallCategoryCode.trim().length === 8) {
