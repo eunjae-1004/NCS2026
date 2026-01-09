@@ -279,6 +279,7 @@ router.get('/', async (req, res) => {
     const result = await query(sql, params)
     console.log('검색 결과 개수:', result.rows.length)
     console.log('검색 결과 총 개수 (total):', total)
+    console.log('페이지네이션:', { page: pageNum, limit: limitNum, offset, totalPages: Math.ceil(total / limitNum) })
     
     // 키워드 검색 시 디버깅 정보 추가
     if (hasKeywordSearch && keyword) {
@@ -286,9 +287,11 @@ router.get('/', async (req, res) => {
       console.log('검색 키워드:', keyword)
       console.log('검색된 결과 개수:', result.rows.length)
       console.log('총 개수 (COUNT):', total)
+      console.log('페이지네이션 정보:', { page: pageNum, limit: limitNum, offset, totalPages: Math.ceil(total / limitNum) })
       console.log('WHERE 절:', whereClause)
       console.log('생성된 SQL 쿼리:', sql)
       console.log('파라미터 값:', params)
+      console.log('파라미터 개수:', params.length)
       
       if (result.rows.length === 0 && total === 0) {
         console.warn('⚠️ 키워드 검색 결과가 없습니다. 다음을 확인하세요:')
@@ -303,9 +306,22 @@ router.get('/', async (req, res) => {
           small_category_name: result.rows[0].small_category_name,
         })
         console.log('✅ 검색 성공! 모든 결과의 unit_code:', result.rows.map(r => r.unit_code))
+        console.log('✅ 검색 성공! 결과 개수 비교:', {
+          실제반환된개수: result.rows.length,
+          COUNT총개수: total,
+          차이: total - result.rows.length,
+          페이지: pageNum,
+          LIMIT: limitNum,
+          OFFSET: offset
+        })
       } else if (result.rows.length === 0 && total > 0) {
         console.warn('⚠️ COUNT는 있지만 실제 결과가 없습니다. LIMIT/OFFSET 확인 필요')
         console.warn('LIMIT:', limitNum, 'OFFSET:', offset, 'PAGE:', pageNum)
+        console.warn('총 개수:', total, '예상 페이지 수:', Math.ceil(total / limitNum))
+      } else if (result.rows.length < total && result.rows.length < limitNum) {
+        console.warn('⚠️ COUNT는', total, '개인데 실제 반환된 결과는', result.rows.length, '개입니다.')
+        console.warn('이는 LIMIT/OFFSET 문제이거나 GROUP BY 문제일 수 있습니다.')
+        console.warn('페이지네이션:', { page: pageNum, limit: limitNum, offset })
       }
     }
     
