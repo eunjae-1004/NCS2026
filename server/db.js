@@ -14,24 +14,36 @@ console.log('   DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '없음
 console.log('   DB_HOST:', process.env.DB_HOST || '없음')
 console.log('   NODE_ENV:', process.env.NODE_ENV || '없음')
 
-const poolConfig = process.env.DATABASE_URL
-  ? {
-      connectionString: process.env.DATABASE_URL,
-      // Railway 내부 네트워크에서는 SSL이 필요하지 않을 수 있음
-      // 하지만 설정해도 문제없음
-      ssl: process.env.DATABASE_URL.includes('railway.internal')
-        ? false  // 내부 네트워크는 SSL 불필요
+let poolConfig
+try {
+  if (process.env.DATABASE_URL) {
+    // DATABASE_URL 유효성 검사
+    const dbUrl = process.env.DATABASE_URL.trim()
+    if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
+      throw new Error('DATABASE_URL must start with postgresql:// or postgres://')
+    }
+    
+    poolConfig = {
+      connectionString: dbUrl,
+      ssl: dbUrl.includes('railway.internal')
+        ? false
         : (process.env.NODE_ENV === 'production' 
           ? { rejectUnauthorized: false } 
           : false),
     }
-  : {
+  } else {
+    poolConfig = {
       host: process.env.DB_HOST || 'localhost',
       port: parseInt(process.env.DB_PORT || '5432'),
       database: process.env.DB_NAME || 'ncs_search',
       user: process.env.DB_USER || 'postgres',
       password: process.env.DB_PASSWORD || '',
     }
+  }
+} catch (error) {
+  console.error('❌ 데이터베이스 설정 오류:', error.message)
+  throw error
+}
 
 // 데이터베이스 연결 풀 생성
 const pool = new Pool({
