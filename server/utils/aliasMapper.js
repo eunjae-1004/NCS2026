@@ -57,11 +57,7 @@ export async function normalizeAliasToCode(input, type) {
 
   // 3. 매핑이 없는 경우, standard_codes에 자동으로 추가
   // 사용자가 입력한 값을 그대로 standard_codes에 저장하여 분석 가능하도록 함
-  const codeType = type === 'department' 
-    ? 'departments' 
-    : type === 'industry' 
-    ? 'industries' 
-    : 'jobs'
+  // codeType은 이미 38번째 줄에서 선언됨
   
   // 코드 prefix 결정
   const codePrefix = type === 'department' ? 'dept' : type === 'industry' ? 'ind' : 'job'
