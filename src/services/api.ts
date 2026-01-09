@@ -11,7 +11,8 @@ import type {
 } from '../types'
 
 // API 기본 URL (환경 변수로 관리)
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api'
+// 기본값: 프로덕션 배포 URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://ncssearch-backend-production.up.railway.app/api'
 
 // API 응답 타입
 interface ApiResponse<T> {

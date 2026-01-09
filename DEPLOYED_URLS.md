@@ -75,10 +75,10 @@ https://ncssearch-backend-production.up.railway.app/api
 - `DATABASE_URL`: PostgreSQL 연결 정보
 - `PORT`: 3000
 - `NODE_ENV`: production
-- `ALLOWED_ORIGINS`: Vercel URL 포함 확인
+- `ALLOWED_ORIGINS`: `https://ncssearch2026.vercel.app,http://localhost:5173`
 
 ### Vercel 프론트엔드 환경 변수
-- `VITE_API_BASE_URL`: `https://ncssearch-backend-production.up.railway.app/api`
+- `VITE_API_BASE_URL`: `https://ncssearch-backend-production.up.railway.app/api` (기본값으로 설정됨)
 - `VITE_USE_MOCK_DATA`: false
 
 ---

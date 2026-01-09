@@ -29,6 +29,8 @@ router.get('/', async (req, res) => {
     let whereClause = 'WHERE 1=1'
     const params = []
     let paramIndex = 1
+    let hasKeywordSearch = false // keyword 검색 여부 추적
+    let keywordForOrderingParamIndex = null // 정렬용 키워드 파라미터 인덱스
 
     // 부서 필터 (sub_category_name으로 검색)
     if (department) {
@@ -37,11 +39,53 @@ router.get('/', async (req, res) => {
       paramIndex++
     }
 
-    // 직무 필터 (small_category_name으로 검색)
+    // 직무 필터 (small_category_name, unit_name 등에서 검색)
     if (jobCategory) {
-      whereClause += ` AND n.small_category_name ILIKE $${paramIndex}`
-      params.push(`%${jobCategory}%`)
-      paramIndex++
+      const trimmedJobCategory = jobCategory.trim()
+      
+      // 빈 문자열이나 공백만 있는 경우 무시
+      if (trimmedJobCategory) {
+        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
+        const jobKeywords = trimmedJobCategory.split(/\s+/).filter(k => k.length > 0)
+        
+        if (jobKeywords.length > 0) {
+          // 각 키워드에 대해 검색 조건 생성
+          const jobConditions = []
+          
+          jobKeywords.forEach((kw, idx) => {
+            const jobParam = `%${kw}%`
+            const currentParamIndex = paramIndex + idx
+            
+            // 검색 대상:
+            // 1. 세분류명 (small_category_name) - 직무군/직무
+            // 2. 능력단위명 (unit_name) - 직무 제목과 유사할 수 있음
+            // 3. 능력단위요소명 (unit_element_name)
+            jobConditions.push(`(
+              n.small_category_name ILIKE $${currentParamIndex} OR
+              n.unit_name ILIKE $${currentParamIndex} OR
+              n.unit_element_name ILIKE $${currentParamIndex}
+            )`)
+            params.push(jobParam)
+          })
+          
+          // 모든 키워드가 포함되어야 함 (AND 조건)
+          whereClause += ` AND (${jobConditions.join(' AND ')})`
+          paramIndex += jobKeywords.length
+        }
+      }
+    }
+
+    // 직무 제목 필터 (jobTitle이 별도로 제공된 경우)
+    if (jobTitle) {
+      const trimmedJobTitle = jobTitle.trim()
+      
+      // 빈 문자열이나 공백만 있는 경우 무시
+      if (trimmedJobTitle) {
+        // 직무 제목은 주로 능력단위명에서 검색
+        whereClause += ` AND n.unit_name ILIKE $${paramIndex}`
+        params.push(`%${trimmedJobTitle}%`)
+        paramIndex++
+      }
     }
 
     // 산업 필터 (major_category_name으로 검색)
@@ -96,19 +140,70 @@ router.get('/', async (req, res) => {
     }
 
     if (keyword) {
-      // 키워드 검색: 세분류, 능력단위명, 능력단위요소명, 수행준거
-      whereClause += ` AND (
-        n.small_category_name ILIKE $${paramIndex} OR
-        n.unit_name ILIKE $${paramIndex} OR
-        n.unit_element_name ILIKE $${paramIndex} OR
-        EXISTS (
-          SELECT 1 FROM performance_criteria pc
-          WHERE pc.unit_code = n.unit_code
-            AND pc.performance_criteria ILIKE $${paramIndex}
-        )
-      )`
-      params.push(`%${keyword}%`)
-      paramIndex++
+      // 키워드 검색: 입력값 검증 및 정규화
+      const trimmedKeyword = keyword.trim()
+      
+      console.log('키워드 검색 시작:', { keyword, trimmedKeyword })
+      
+      // 빈 문자열이나 공백만 있는 경우 무시
+      if (!trimmedKeyword) {
+        console.log('키워드가 비어있어 검색을 건너뜁니다.')
+        // keyword 파라미터는 있지만 값이 비어있으면 무시
+      } else {
+        hasKeywordSearch = true
+        
+        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
+        const keywords = trimmedKeyword.split(/\s+/).filter(k => k.length > 0)
+        
+        console.log('추출된 키워드:', keywords)
+        
+        if (keywords.length > 0) {
+          // 정렬용으로 첫 번째 키워드의 파라미터 인덱스 저장
+          keywordForOrderingParamIndex = paramIndex
+          
+          // 각 키워드에 대해 검색 조건 생성
+          const keywordConditions = []
+          
+          keywords.forEach((kw, idx) => {
+            const keywordParam = `%${kw}%`
+            const currentParamIndex = paramIndex + idx
+            
+            console.log(`키워드 "${kw}" 검색 조건 생성 (파라미터 인덱스: ${currentParamIndex})`)
+            
+            // 검색 대상:
+            // 1. 세분류명 (small_category_name)
+            // 2. 능력단위명 (unit_name)
+            // 3. 능력단위요소명 (unit_element_name)
+            // 4. 능력단위 정의 (unit_definition) - NULL 처리 포함
+            // 5. 수행준거 (performance_criteria)
+            // NULL 값 처리를 위해 IS NOT NULL 체크 사용
+            keywordConditions.push(`(
+              (n.small_category_name IS NOT NULL AND n.small_category_name ILIKE $${currentParamIndex}) OR
+              (n.unit_name IS NOT NULL AND n.unit_name ILIKE $${currentParamIndex}) OR
+              (n.unit_element_name IS NOT NULL AND n.unit_element_name ILIKE $${currentParamIndex}) OR
+              (ud.unit_definition IS NOT NULL AND ud.unit_definition ILIKE $${currentParamIndex}) OR
+              EXISTS (
+                SELECT 1 FROM performance_criteria pc
+                WHERE pc.unit_code = n.unit_code
+                  AND pc.performance_criteria IS NOT NULL
+                  AND pc.performance_criteria ILIKE $${currentParamIndex}
+              )
+            )`)
+            params.push(keywordParam)
+          })
+          
+          // 모든 키워드가 포함되어야 함 (AND 조건)
+          const keywordWhereClause = `(${keywordConditions.join(' AND ')})`
+          whereClause += ` AND ${keywordWhereClause}`
+          paramIndex += keywords.length
+          
+          console.log('키워드 검색 조건 추가 완료:', {
+            keywordCount: keywords.length,
+            whereClause: keywordWhereClause,
+            paramIndex
+          })
+        }
+      }
     }
 
     // 총 개수 조회 (limit, offset 추가 전의 파라미터 사용)
@@ -125,6 +220,7 @@ router.get('/', async (req, res) => {
     const total = parseInt(countResult.rows[0].total) || 0
 
     // 데이터 조회 (limit, offset 파라미터 추가)
+    // keyword 검색 시 unit_element_name이 매칭되면 여러 행이 나올 수 있으므로 DISTINCT 사용
     const sql = `
       SELECT DISTINCT
         n.unit_code,
@@ -136,15 +232,29 @@ router.get('/', async (req, res) => {
         n.small_category_name,
         n.middle_category_name,
         n.major_category_name,
-        ud.unit_definition as definition,
-        STRING_AGG(DISTINCT n.unit_element_name, ', ') as element_names
+        COALESCE(ud.unit_definition, '') as definition,
+        STRING_AGG(DISTINCT n.unit_element_name, ', ') FILTER (WHERE n.unit_element_name IS NOT NULL) as element_names
       FROM ncs_main n
       LEFT JOIN unit_definition ud ON n.unit_code = ud.unit_code
       ${whereClause}
       GROUP BY n.unit_code, n.unit_name, n.unit_level, n.sub_category_code,
                n.sub_category_name, n.small_category_code, n.small_category_name, n.middle_category_name,
                n.major_category_name, ud.unit_definition
-      ORDER BY n.unit_code
+      ORDER BY 
+        ${hasKeywordSearch && keywordForOrderingParamIndex !== null
+          ? `CASE 
+              WHEN n.unit_name IS NOT NULL AND n.unit_name ILIKE $${keywordForOrderingParamIndex} THEN 1
+              WHEN n.small_category_name IS NOT NULL AND n.small_category_name ILIKE $${keywordForOrderingParamIndex} THEN 2
+              WHEN EXISTS (
+                SELECT 1 FROM ncs_main n2 
+                WHERE n2.unit_code = n.unit_code 
+                  AND n2.unit_element_name IS NOT NULL 
+                  AND n2.unit_element_name ILIKE $${keywordForOrderingParamIndex}
+              ) THEN 3
+              ELSE 4
+            END,`
+          : ''}
+        n.unit_code
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `
     params.push(limitNum, offset)

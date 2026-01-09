@@ -68,16 +68,96 @@ router.get('/', async (req, res) => {
     const params = []
     let paramIndex = 1
 
+    // 산업분야 필터 (major_category_name으로 검색)
     if (industryName) {
-      whereClause += ` AND n.major_category_name ILIKE $${paramIndex}`
-      params.push(`%${industryName}%`)
-      paramIndex++
+      const trimmedIndustry = industryName.trim()
+      
+      // 빈 문자열이나 공백만 있는 경우 무시
+      if (trimmedIndustry) {
+        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
+        const industryKeywords = trimmedIndustry.split(/\s+/).filter(k => k.length > 0)
+        
+        if (industryKeywords.length > 0) {
+          // 각 키워드에 대해 검색 조건 생성
+          const industryConditions = []
+          
+          industryKeywords.forEach((kw, idx) => {
+            const industryParam = `%${kw}%`
+            const currentParamIndex = paramIndex + idx
+            
+            // 검색 대상: 대분류명 (major_category_name)
+            industryConditions.push(`n.major_category_name ILIKE $${currentParamIndex}`)
+            params.push(industryParam)
+          })
+          
+          // 모든 키워드가 포함되어야 함 (AND 조건)
+          whereClause += ` AND (${industryConditions.join(' AND ')})`
+          paramIndex += industryKeywords.length
+        }
+      }
     }
 
+    // 부서 필터 (sub_category_name으로 검색)
     if (departmentName) {
-      whereClause += ` AND n.sub_category_name ILIKE $${paramIndex}`
-      params.push(`%${departmentName}%`)
-      paramIndex++
+      const trimmedDepartment = departmentName.trim()
+      
+      // 빈 문자열이나 공백만 있는 경우 무시
+      if (trimmedDepartment) {
+        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
+        const departmentKeywords = trimmedDepartment.split(/\s+/).filter(k => k.length > 0)
+        
+        if (departmentKeywords.length > 0) {
+          // 각 키워드에 대해 검색 조건 생성
+          const departmentConditions = []
+          
+          departmentKeywords.forEach((kw, idx) => {
+            const departmentParam = `%${kw}%`
+            const currentParamIndex = paramIndex + idx
+            
+            // 검색 대상: 소분류명 (sub_category_name)
+            departmentConditions.push(`n.sub_category_name ILIKE $${currentParamIndex}`)
+            params.push(departmentParam)
+          })
+          
+          // 모든 키워드가 포함되어야 함 (AND 조건)
+          whereClause += ` AND (${departmentConditions.join(' AND ')})`
+          paramIndex += departmentKeywords.length
+        }
+      }
+    }
+
+    // 직무 필터 (job 파라미터 활용, small_category_name으로 검색)
+    if (jobName) {
+      const trimmedJob = jobName.trim()
+      
+      // 빈 문자열이나 공백만 있는 경우 무시
+      if (trimmedJob) {
+        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
+        const jobKeywords = trimmedJob.split(/\s+/).filter(k => k.length > 0)
+        
+        if (jobKeywords.length > 0) {
+          // 각 키워드에 대해 검색 조건 생성
+          const jobConditions = []
+          
+          jobKeywords.forEach((kw, idx) => {
+            const jobParam = `%${kw}%`
+            const currentParamIndex = paramIndex + idx
+            
+            // 검색 대상:
+            // 1. 세분류명 (small_category_name) - 직무군/직무
+            // 2. 능력단위명 (unit_name) - 직무 제목과 유사할 수 있음
+            jobConditions.push(`(
+              n.small_category_name ILIKE $${currentParamIndex} OR
+              n.unit_name ILIKE $${currentParamIndex}
+            )`)
+            params.push(jobParam)
+          })
+          
+          // 모든 키워드가 포함되어야 함 (AND 조건)
+          whereClause += ` AND (${jobConditions.join(' AND ')})`
+          paramIndex += jobKeywords.length
+        }
+      }
     }
 
     // 4. 맞춤형 추천 로직

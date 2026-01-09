@@ -148,10 +148,28 @@ router.post('/', async (req, res) => {
   try {
     const { userId, unitCode, memo } = req.body
 
-    if (!userId || !unitCode) {
+    // 입력값 검증
+    if (!userId) {
       return res.status(400).json({
         success: false,
-        error: 'userId와 unitCode가 필요합니다.',
+        error: 'userId가 필요합니다.',
+      })
+    }
+
+    if (!unitCode) {
+      return res.status(400).json({
+        success: false,
+        error: 'unitCode가 필요합니다.',
+      })
+    }
+
+    // unitCode 정규화 및 검증
+    const unitCodeStr = String(unitCode).trim()
+    
+    if (!unitCodeStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'unitCode는 빈 값일 수 없습니다.',
       })
     }
 
@@ -165,10 +183,23 @@ router.post('/', async (req, res) => {
     `
     await query(userCheckQuery, [String(userId), String(userId)]) // 이름은 일단 userId로 설정
 
-    // 중복 확인 및 추가 (ON CONFLICT로 중복 방지)
-    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
-    const unitCodeStr = String(unitCode)
+    // unitCode가 실제로 존재하는지 확인 (데이터 무결성 검증)
+    const unitCheckQuery = `
+      SELECT unit_code 
+      FROM ncs_main 
+      WHERE unit_code = $1 
+      LIMIT 1
+    `
+    const unitCheckResult = await query(unitCheckQuery, [unitCodeStr])
     
+    if (unitCheckResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `능력단위 코드 "${unitCodeStr}"를 찾을 수 없습니다.`,
+      })
+    }
+
+    // 중복 확인 및 추가 (ON CONFLICT로 중복 방지)
     const insertQuery = `
       INSERT INTO cart_items (user_id, unit_code, memo, added_at)
       VALUES ($1::VARCHAR, $2::VARCHAR, $3, CURRENT_TIMESTAMP)
@@ -179,6 +210,13 @@ router.post('/', async (req, res) => {
     `
 
     const result = await query(insertQuery, [String(userId), unitCodeStr, memo || null])
+
+    if (result.rows.length === 0) {
+      return res.status(500).json({
+        success: false,
+        error: '선택목록 추가에 실패했습니다.',
+      })
+    }
 
     res.json({
       success: true,
@@ -197,6 +235,22 @@ router.post('/', async (req, res) => {
       userId: req.body?.userId,
       unitCode: req.body?.unitCode,
     })
+    
+    // 데이터베이스 제약 조건 오류 처리
+    if (error.code === '23503') { // Foreign key violation
+      return res.status(400).json({
+        success: false,
+        error: '유효하지 않은 사용자 또는 능력단위 코드입니다.',
+      })
+    }
+    
+    if (error.code === '23505') { // Unique violation
+      return res.status(409).json({
+        success: false,
+        error: '이미 선택목록에 추가된 능력단위입니다.',
+      })
+    }
+
     res.status(500).json({
       success: false,
       error: error.message || '장바구니 추가 중 오류가 발생했습니다.',
@@ -209,40 +263,102 @@ router.post('/multiple', async (req, res) => {
   try {
     const { userId, items } = req.body
 
-    if (!userId || !items || !Array.isArray(items)) {
+    // 입력값 검증
+    if (!userId) {
       return res.status(400).json({
         success: false,
-        error: 'userId와 items 배열이 필요합니다.',
+        error: 'userId가 필요합니다.',
+      })
+    }
+
+    if (!items || !Array.isArray(items)) {
+      return res.status(400).json({
+        success: false,
+        error: 'items 배열이 필요합니다.',
       })
     }
 
     if (items.length === 0) {
       return res.json({
         success: true,
-        data: { count: 0 },
+        data: { count: 0, added: 0, skipped: 0 },
+      })
+    }
+
+    // 사용자가 존재하는지 확인 (없으면 생성)
+    const userCheckQuery = `
+      INSERT INTO users (id, name, role, created_at)
+      VALUES ($1::VARCHAR, $2::VARCHAR, COALESCE((SELECT role FROM users WHERE id = $1::VARCHAR), 'user'::VARCHAR), CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO NOTHING
+    `
+    await query(userCheckQuery, [String(userId), String(userId)])
+
+    // 유효한 unitCode만 필터링 (빈 값 제거)
+    const validItems = items
+      .map((item) => {
+        const unitCode = String(item.abilityUnit?.code || item.abilityUnit?.id || '').trim()
+        return unitCode ? { unitCode, memo: item.memo || null } : null
+      })
+      .filter((item) => item !== null)
+
+    if (validItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: '유효한 능력단위 코드가 없습니다.',
       })
     }
 
     // 여러 아이템 추가 (중복 시 무시)
-    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
-    const insertQueries = items.map((item) => {
-      const unitCodeStr = String(item.abilityUnit.code || item.abilityUnit.id)
-      return query(
-        `INSERT INTO cart_items (user_id, unit_code, memo, added_at)
-         VALUES ($1::VARCHAR, $2::VARCHAR, $3, CURRENT_TIMESTAMP)
-         ON CONFLICT (user_id, unit_code) DO NOTHING`,
-        [String(userId), unitCodeStr, item.memo || null]
-      )
-    })
+    // 성능 최적화: 한 번의 쿼리로 여러 아이템 추가
+    const values = validItems
+      .map((item, index) => {
+        const baseIndex = index * 3
+        return `($${baseIndex + 1}::VARCHAR, $${baseIndex + 2}::VARCHAR, $${baseIndex + 3}, CURRENT_TIMESTAMP)`
+      })
+      .join(', ')
 
-    await Promise.all(insertQueries)
+    const params = validItems.flatMap((item) => [
+      String(userId),
+      item.unitCode,
+      item.memo,
+    ])
+
+    const insertQuery = `
+      INSERT INTO cart_items (user_id, unit_code, memo, added_at)
+      VALUES ${values}
+      ON CONFLICT (user_id, unit_code) DO NOTHING
+      RETURNING unit_code
+    `
+
+    const result = await query(insertQuery, params)
+    const addedCount = result.rows.length
+    const skippedCount = validItems.length - addedCount
 
     res.json({
       success: true,
-      data: { count: items.length },
+      data: {
+        count: validItems.length,
+        added: addedCount,
+        skipped: skippedCount,
+      },
     })
   } catch (error) {
     console.error('장바구니 여러 개 추가 오류:', error)
+    console.error('오류 상세:', {
+      message: error.message,
+      stack: error.stack,
+      userId: req.body?.userId,
+      itemsCount: req.body?.items?.length,
+    })
+    
+    // 데이터베이스 제약 조건 오류 처리
+    if (error.code === '23503') { // Foreign key violation
+      return res.status(400).json({
+        success: false,
+        error: '유효하지 않은 사용자 또는 능력단위 코드가 포함되어 있습니다.',
+      })
+    }
+
     res.status(500).json({
       success: false,
       error: error.message || '장바구니 추가 중 오류가 발생했습니다.',
@@ -256,6 +372,7 @@ router.delete('/:unitCode', async (req, res) => {
     const { unitCode } = req.params
     const { userId } = req.query
 
+    // 입력값 검증
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -263,15 +380,30 @@ router.delete('/:unitCode', async (req, res) => {
       })
     }
 
-    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
-    const unitCodeStr = String(unitCode)
+    // unitCode 정규화 및 검증
+    const unitCodeStr = String(unitCode).trim()
+    
+    if (!unitCodeStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'unitCode는 빈 값일 수 없습니다.',
+      })
+    }
 
     const deleteQuery = `
       DELETE FROM cart_items
       WHERE user_id = $1::VARCHAR AND unit_code = $2::VARCHAR
+      RETURNING id
     `
 
-    await query(deleteQuery, [String(userId), unitCodeStr])
+    const result = await query(deleteQuery, [String(userId), unitCodeStr])
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: '선택목록에서 해당 능력단위를 찾을 수 없습니다.',
+      })
+    }
 
     res.json({
       success: true,
@@ -292,6 +424,7 @@ router.put('/:unitCode/memo', async (req, res) => {
     const { unitCode } = req.params
     const { userId, memo } = req.body
 
+    // 입력값 검증
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -299,8 +432,18 @@ router.put('/:unitCode/memo', async (req, res) => {
       })
     }
 
-    // unitCode를 문자열로 명시적으로 변환 (타입 불일치 방지)
-    const unitCodeStr = String(unitCode)
+    // unitCode 정규화 및 검증
+    const unitCodeStr = String(unitCode).trim()
+    
+    if (!unitCodeStr) {
+      return res.status(400).json({
+        success: false,
+        error: 'unitCode는 빈 값일 수 없습니다.',
+      })
+    }
+
+    // memo는 선택사항이므로 null 허용 (빈 문자열도 null로 처리)
+    const memoValue = memo && String(memo).trim() ? String(memo).trim() : null
 
     const updateQuery = `
       UPDATE cart_items
@@ -309,12 +452,12 @@ router.put('/:unitCode/memo', async (req, res) => {
       RETURNING id, unit_code, memo
     `
 
-    const result = await query(updateQuery, [memo || null, String(userId), unitCodeStr])
+    const result = await query(updateQuery, [memoValue, String(userId), unitCodeStr])
 
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
-        error: '장바구니 아이템을 찾을 수 없습니다.',
+        error: '선택목록에서 해당 능력단위를 찾을 수 없습니다.',
       })
     }
 
@@ -340,6 +483,7 @@ router.delete('/', async (req, res) => {
   try {
     const { userId } = req.query
 
+    // 입력값 검증
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -347,12 +491,21 @@ router.delete('/', async (req, res) => {
       })
     }
 
-    const deleteQuery = `DELETE FROM cart_items WHERE user_id = $1::VARCHAR`
-    await query(deleteQuery, [String(userId)])
+    const deleteQuery = `
+      DELETE FROM cart_items 
+      WHERE user_id = $1::VARCHAR
+      RETURNING id
+    `
+    const result = await query(deleteQuery, [String(userId)])
+
+    const deletedCount = result.rows.length
 
     res.json({
       success: true,
       message: '장바구니가 비워졌습니다.',
+      data: {
+        deletedCount,
+      },
     })
   } catch (error) {
     console.error('장바구니 전체 삭제 오류:', error)
