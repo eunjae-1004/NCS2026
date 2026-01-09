@@ -276,10 +276,28 @@ router.get('/', async (req, res) => {
       smallCategoryCode,
     })
     
-    const result = await query(sql, params)
+    let result
+    try {
+      console.log('쿼리 실행 시작...')
+      console.log('파라미터 개수:', params.length)
+      console.log('파라미터 값들:', params.map((p, i) => `$${i + 1} = ${typeof p === 'string' ? p.substring(0, 50) : p}`))
+      result = await query(sql, params)
+      console.log('쿼리 실행 완료')
+    } catch (queryError) {
+      console.error('⚠️ 쿼리 실행 오류:', queryError)
+      console.error('오류 발생 쿼리:', sql)
+      console.error('오류 발생 파라미터:', params)
+      throw queryError
+    }
+    
     console.log('검색 결과 개수:', result.rows.length)
     console.log('검색 결과 총 개수 (total):', total)
     console.log('페이지네이션:', { page: pageNum, limit: limitNum, offset, totalPages: Math.ceil(total / limitNum) })
+    
+    if (result.rows.length === 0 && total > 0) {
+      console.warn('⚠️ 경고: COUNT는', total, '개인데 실제 결과는 0개입니다!')
+      console.warn('이는 LIMIT/OFFSET 문제이거나 쿼리 실행 오류일 수 있습니다.')
+    }
     
     // 키워드 검색 시 디버깅 정보 추가
     if (hasKeywordSearch && keyword) {
