@@ -18,12 +18,7 @@ router.post('/selections', async (req, res) => {
     const { userId, abilityUnitId, industry, department, job } = req.body
 
     // 디버깅: 구조 분해 후 값 확인
-    console.log('구조 분해 후 값:')
-    console.log('  - userId:', userId, '(type:', typeof userId, ')')
-    console.log('  - abilityUnitId:', abilityUnitId, '(type:', typeof abilityUnitId, ')')
-    console.log('  - industry:', industry, '(type:', typeof industry, ', isUndefined:', industry === undefined, ', isNull:', industry === null, ', isEmpty:', industry === '', ', length:', industry?.length)')
-    console.log('  - department:', department, '(type:', typeof department, ', isUndefined:', department === undefined, ', isNull:', department === null, ', isEmpty:', department === '', ', length:', department?.length)')
-    console.log('  - job:', job, '(type:', typeof job, ', isUndefined:', job === undefined, ', isNull:', job === null, ', isEmpty:', job === '', ', length:', job?.length, ')')
+    console.log('구조 분해 후 값:', { userId, abilityUnitId, industry, department, job })
 
     if (!userId || !abilityUnitId) {
       return res.status(400).json({
