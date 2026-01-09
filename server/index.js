@@ -5,59 +5,11 @@ import dotenv from 'dotenv'
 // 환경 변수 먼저 로드
 dotenv.config()
 
-// 데이터베이스 라우트 (조건부 import)
-let abilityUnitsRouter, historyRouter
-let dbConnected = false
-
-try {
-  const dbModule = await import('./db.js')
-  const routesModule = await import('./routes/abilityUnits.js')
-  const historyModule = await import('./routes/history.js')
-  abilityUnitsRouter = routesModule.default
-  historyRouter = historyModule.default
-  
-  // 데이터베이스 연결 테스트 (재시도 로직 포함)
-  let retries = 3
-  let connected = false
-  
-  while (retries > 0 && !connected) {
-    try {
-      const testQuery = await Promise.race([
-        dbModule.default.query('SELECT NOW()'),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Connection timeout')), 5000)
-        )
-      ])
-      
-      if (testQuery) {
-        dbConnected = true
-        connected = true
-        console.log('✅ PostgreSQL 데이터베이스 연결 성공')
-      }
-    } catch (err) {
-      retries--
-      if (retries > 0) {
-        console.log(`연결 재시도 중... (${retries}회 남음)`)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-      } else {
-        throw err
-      }
-    }
-  }
-} catch (error) {
-  console.error('❌ 데이터베이스 연결 실패. Mock 데이터 모드로 동작합니다.')
-  console.error('   에러 메시지:', error.message)
-  console.error('   에러 코드:', error.code)
-  console.error('   환경 변수 확인:')
-  console.error('     DATABASE_URL:', process.env.DATABASE_URL ? '설정됨' : '없음')
-  console.error('     DB_HOST:', process.env.DB_HOST || '없음')
-  console.error('     DB_NAME:', process.env.DB_NAME || '없음')
-  console.error('     DB_USER:', process.env.DB_USER || '없음')
-  console.error('     DB_PASSWORD:', process.env.DB_PASSWORD ? '설정됨' : '없음')
-  dbConnected = false
-}
-
-dotenv.config()
+// 데이터베이스 라우트 import
+const routesModule = await import('./routes/abilityUnits.js')
+const historyModule = await import('./routes/history.js')
+const abilityUnitsRouter = routesModule.default
+const historyRouter = historyModule.default
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -241,35 +193,28 @@ const aliasMapping = {
 
 // API 라우트
 
-// 데이터베이스 라우트 (연결 성공 시에만 사용)
-if (dbConnected && abilityUnitsRouter && historyRouter) {
-  app.use('/api/ability-units', abilityUnitsRouter)
-  app.use('/api/history', historyRouter)
-  console.log('📊 데이터베이스 모드로 API 서버 실행 중')
-  
-  // 기관, 표준코드, 별칭, 추천, 세트, 장바구니, 인증 라우트도 추가
-  try {
-    const orgRouter = (await import('./routes/organizations.js')).default
-    const stdCodeRouter = (await import('./routes/standardCodes.js')).default
-    const aliasRouter = (await import('./routes/alias.js')).default
-    const recommendationsRouter = (await import('./routes/recommendations.js')).default
-    const cartSetsRouter = (await import('./routes/cartSets.js')).default
-    const cartRouter = (await import('./routes/cart.js')).default
-    const authRouter = (await import('./routes/auth.js')).default
-    app.use('/api/organizations', orgRouter)
-    app.use('/api/standard-codes', stdCodeRouter)
-    app.use('/api/alias', aliasRouter)
-    app.use('/api/recommendations', recommendationsRouter)
-    app.use('/api/cart-sets', cartSetsRouter)
-    app.use('/api/cart', cartRouter)
-    app.use('/api/auth', authRouter)
-    console.log('✅ 추가 라우트 등록 완료: organizations, standard-codes, alias, recommendations, cart-sets, cart, auth')
-  } catch (error) {
-    console.error('❌ 추가 라우트 로드 실패:', error.message)
-    console.error('   상세 에러:', error)
-  }
-} else {
-  console.log('📝 Mock 데이터 모드로 API 서버 실행 중')
+// 데이터베이스 라우트 등록
+app.use('/api/ability-units', abilityUnitsRouter)
+app.use('/api/history', historyRouter)
+
+// 기관, 표준코드, 별칭, 추천, 세트, 장바구니, 인증 라우트도 추가
+try {
+  const orgRouter = (await import('./routes/organizations.js')).default
+  const stdCodeRouter = (await import('./routes/standardCodes.js')).default
+  const aliasRouter = (await import('./routes/alias.js')).default
+  const recommendationsRouter = (await import('./routes/recommendations.js')).default
+  const cartSetsRouter = (await import('./routes/cartSets.js')).default
+  const cartRouter = (await import('./routes/cart.js')).default
+  const authRouter = (await import('./routes/auth.js')).default
+  app.use('/api/organizations', orgRouter)
+  app.use('/api/standard-codes', stdCodeRouter)
+  app.use('/api/alias', aliasRouter)
+  app.use('/api/recommendations', recommendationsRouter)
+  app.use('/api/cart-sets', cartSetsRouter)
+  app.use('/api/cart', cartRouter)
+  app.use('/api/auth', authRouter)
+} catch (error) {
+  console.error('❌ 추가 라우트 로드 실패:', error.message)
 }
 
 // 기존 Mock 데이터 라우트 (데이터베이스 연결 실패 시 fallback)
