@@ -23,7 +23,7 @@ router.post('/selections', async (req, res) => {
     console.log('  - abilityUnitId:', abilityUnitId, '(type:', typeof abilityUnitId, ')')
     console.log('  - industry:', industry, '(type:', typeof industry, ', isUndefined:', industry === undefined, ', isNull:', industry === null, ', isEmpty:', industry === '', ', length:', industry?.length)')
     console.log('  - department:', department, '(type:', typeof department, ', isUndefined:', department === undefined, ', isNull:', department === null, ', isEmpty:', department === '', ', length:', department?.length)')
-    console.log('  - job:', job, '(type:', typeof job, ', isUndefined:', job === undefined, ', isNull:', job === null, ', isEmpty:', job === '', ', length:', job?.length)
+    console.log('  - job:', job, '(type:', typeof job, ', isUndefined:', job === undefined, ', isNull:', job === null, ', isEmpty:', job === '', ', length:', job?.length, ')')
 
     if (!userId || !abilityUnitId) {
       return res.status(400).json({
