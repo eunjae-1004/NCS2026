@@ -395,13 +395,32 @@ router.get('/', async (req, res) => {
     }
 
     // 응답 구조: { success: true, data: { data: [...], pagination: {...} } }
-    res.json({ 
+    console.log('=== 최종 응답 데이터 ===')
+    console.log('능력단위 개수:', abilityUnits.length)
+    console.log('페이지네이션:', pagination)
+    console.log('첫 번째 항목:', abilityUnits[0] ? {
+      unit_code: abilityUnits[0].code,
+      unit_name: abilityUnits[0].name,
+      small_category_name: abilityUnits[0].jobCategory
+    } : '없음')
+    
+    const responseData = { 
       success: true, 
       data: {
         data: abilityUnits,
         pagination
       }
+    }
+    
+    console.log('응답 데이터 구조:', {
+      success: responseData.success,
+      hasData: !!responseData.data,
+      dataLength: responseData.data?.data?.length || 0,
+      hasPagination: !!responseData.data?.pagination,
+      paginationTotal: responseData.data?.pagination?.total
     })
+    
+    res.json(responseData)
   } catch (error) {
     console.error('능력단위 검색 오류:', error)
     res.status(500).json({
