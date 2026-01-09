@@ -2,6 +2,9 @@ import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 
+// 환경 변수 먼저 로드
+dotenv.config()
+
 // 데이터베이스 라우트 (조건부 import)
 let abilityUnitsRouter, historyRouter
 let dbConnected = false
