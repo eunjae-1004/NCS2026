@@ -285,18 +285,26 @@ router.get('/', async (req, res) => {
       console.log('검색 키워드:', keyword)
       console.log('검색된 결과 개수:', result.rows.length)
       console.log('총 개수 (COUNT):', total)
+      console.log('WHERE 절:', whereClause)
+      console.log('생성된 SQL 쿼리:', sql)
+      console.log('파라미터 값:', params)
       
       if (result.rows.length === 0 && total === 0) {
         console.warn('⚠️ 키워드 검색 결과가 없습니다. 다음을 확인하세요:')
         console.warn('1. 데이터베이스에 해당 키워드가 포함된 데이터가 있는지 확인')
         console.warn('2. 생성된 SQL 쿼리를 확인하여 검색 조건이 올바른지 확인')
         console.warn('3. 키워드 파라미터가 올바르게 전달되었는지 확인')
+        console.warn('4. WHERE 절 조건을 확인하세요:', whereClause)
       } else if (result.rows.length > 0) {
         console.log('✅ 검색 성공! 첫 번째 결과:', {
           unit_code: result.rows[0].unit_code,
           unit_name: result.rows[0].unit_name,
           small_category_name: result.rows[0].small_category_name,
         })
+        console.log('✅ 검색 성공! 모든 결과의 unit_code:', result.rows.map(r => r.unit_code))
+      } else if (result.rows.length === 0 && total > 0) {
+        console.warn('⚠️ COUNT는 있지만 실제 결과가 없습니다. LIMIT/OFFSET 확인 필요')
+        console.warn('LIMIT:', limitNum, 'OFFSET:', offset, 'PAGE:', pageNum)
       }
     }
     
