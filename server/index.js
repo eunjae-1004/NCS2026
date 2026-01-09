@@ -13,11 +13,33 @@ try {
   abilityUnitsRouter = routesModule.default
   historyRouter = historyModule.default
   
-  // 데이터베이스 연결 테스트
-  const testQuery = await dbModule.default.query('SELECT NOW()')
-  if (testQuery) {
-    dbConnected = true
-    console.log('✅ PostgreSQL 데이터베이스 연결 성공')
+  // 데이터베이스 연결 테스트 (재시도 로직 포함)
+  let retries = 3
+  let connected = false
+  
+  while (retries > 0 && !connected) {
+    try {
+      const testQuery = await Promise.race([
+        dbModule.default.query('SELECT NOW()'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Connection timeout')), 5000)
+        )
+      ])
+      
+      if (testQuery) {
+        dbConnected = true
+        connected = true
+        console.log('✅ PostgreSQL 데이터베이스 연결 성공')
+      }
+    } catch (err) {
+      retries--
+      if (retries > 0) {
+        console.log(`연결 재시도 중... (${retries}회 남음)`)
+        await new Promise(resolve => setTimeout(resolve, 2000))
+      } else {
+        throw err
+      }
+    }
   }
 } catch (error) {
   console.error('❌ 데이터베이스 연결 실패. Mock 데이터 모드로 동작합니다.')
