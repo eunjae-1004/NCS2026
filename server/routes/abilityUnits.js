@@ -160,6 +160,12 @@ router.get('/', async (req, res) => {
         }
       }
     }
+    
+    // 키워드 검색 시 WHERE 절 확인
+    if (hasKeywordSearch) {
+      console.log('키워드 검색 - WHERE 절:', whereClause)
+      console.log('키워드 검색 - 파라미터:', params)
+    }
 
     // 총 개수 조회 (limit, offset 추가 전의 파라미터 사용)
     const countParams = [...params]
@@ -171,6 +177,10 @@ router.get('/', async (req, res) => {
     `
     const countResult = await query(countSql, countParams)
     const total = parseInt(countResult.rows[0].total) || 0
+    
+    if (hasKeywordSearch) {
+      console.log('키워드 검색 - COUNT 결과:', total)
+    }
 
     // 데이터 조회 (limit, offset 파라미터 추가)
     // keyword 검색 시 unit_element_name이 매칭되면 여러 행이 나올 수 있으므로 GROUP BY 사용
@@ -213,6 +223,10 @@ router.get('/', async (req, res) => {
     `
     params.push(limitNum, offset)
     const result = await query(sql, params)
+    
+    if (hasKeywordSearch) {
+      console.log('키워드 검색 - SELECT 결과 개수:', result.rows.length)
+    }
     
     // 결과를 AbilityUnit 형식으로 변환
     const abilityUnits = result.rows.map((row) => {
