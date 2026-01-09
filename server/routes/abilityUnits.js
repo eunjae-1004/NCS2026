@@ -96,40 +96,21 @@ router.get('/', async (req, res) => {
     }
 
     if (subCategoryCode) {
-      console.log('소분류 코드 필터 적용:', {
-        subCategoryCode,
-        length: subCategoryCode.length,
-        type: typeof subCategoryCode,
-      })
       whereClause += ` AND n.sub_category_code = $${paramIndex}`
       params.push(subCategoryCode.trim())
       paramIndex++
-      console.log('소분류 코드 필터 파라미터:', params[params.length - 1])
     }
 
     if (smallCategoryCode) {
-      console.log('세분류 코드 필터 적용:', {
-        smallCategoryCode,
-        length: smallCategoryCode.length,
-        type: typeof smallCategoryCode,
-      })
-      // 정확히 일치하는 8자리 세분류 코드로 필터링
-      // 만약 small_category_code가 6자리로 저장되어 있다면, unit_code의 앞 8자리와 비교
       const trimmedCode = smallCategoryCode.trim()
       if (trimmedCode.length === 8) {
-        // 8자리 코드: unit_code의 앞 8자리만 비교 (정확한 매칭)
-        // small_category_code는 6자리로 저장되어 있을 수 있으므로 unit_code 기준으로만 비교
         whereClause += ` AND SUBSTRING(n.unit_code, 1, 8) = $${paramIndex}`
         params.push(trimmedCode)
         paramIndex++
-        console.log('세분류 코드 필터 파라미터 (8자리, unit_code 기준):', trimmedCode)
-        console.log('필터 조건: SUBSTRING(n.unit_code, 1, 8) =', trimmedCode)
       } else {
-        // 6자리 이하 코드: small_category_code로만 비교
         whereClause += ` AND n.small_category_code = $${paramIndex}`
         params.push(trimmedCode)
         paramIndex++
-        console.log('세분류 코드 필터 파라미터 (6자리 이하):', trimmedCode)
       }
     }
 
@@ -140,42 +121,19 @@ router.get('/', async (req, res) => {
     }
 
     if (keyword) {
-      // 키워드 검색: 입력값 검증 및 정규화
       const trimmedKeyword = keyword.trim()
-      
-      console.log('키워드 검색 시작:', { keyword, trimmedKeyword })
-      
-      // 빈 문자열이나 공백만 있는 경우 무시
-      if (!trimmedKeyword) {
-        console.log('키워드가 비어있어 검색을 건너뜁니다.')
-        // keyword 파라미터는 있지만 값이 비어있으면 무시
-      } else {
+      if (trimmedKeyword) {
         hasKeywordSearch = true
-        
-        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
         const keywords = trimmedKeyword.split(/\s+/).filter(k => k.length > 0)
         
-        console.log('추출된 키워드:', keywords)
-        
         if (keywords.length > 0) {
-          // 정렬용으로 첫 번째 키워드의 파라미터 인덱스 저장
           keywordForOrderingParamIndex = paramIndex
-          
-          // 각 키워드에 대해 검색 조건 생성
           const keywordConditions = []
           
           keywords.forEach((kw, idx) => {
             const keywordParam = `%${kw}%`
             const currentParamIndex = paramIndex + idx
             
-            console.log(`키워드 "${kw}" 검색 조건 생성 (파라미터 인덱스: ${currentParamIndex})`)
-            
-            // 검색 대상:
-            // 1. 세분류명 (small_category_name)
-            // 2. 능력단위명 (unit_name)
-            // 3. 능력단위요소명 (unit_element_name) - EXISTS로 처리하여 GROUP BY 문제 해결
-            // 4. 능력단위 정의 (unit_definition)
-            // 5. 수행준거 (performance_criteria)
             keywordConditions.push(`(
               (n.small_category_name IS NOT NULL AND n.small_category_name ILIKE $${currentParamIndex}) OR
               (n.unit_name IS NOT NULL AND n.unit_name ILIKE $${currentParamIndex}) OR
@@ -196,16 +154,9 @@ router.get('/', async (req, res) => {
             params.push(keywordParam)
           })
           
-          // 모든 키워드가 포함되어야 함 (AND 조건)
           const keywordWhereClause = `(${keywordConditions.join(' AND ')})`
           whereClause += ` AND ${keywordWhereClause}`
           paramIndex += keywords.length
-          
-          console.log('키워드 검색 조건 추가 완료:', {
-            keywordCount: keywords.length,
-            whereClause: keywordWhereClause,
-            paramIndex
-          })
         }
       }
     }
@@ -263,120 +214,10 @@ router.get('/', async (req, res) => {
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
     `
     params.push(limitNum, offset)
+    const result = await query(sql, params)
     
-    console.log('검색 쿼리:', sql)
-    console.log('검색 파라미터:', params)
-    console.log('필터 값:', { 
-      department, 
-      jobCategory, 
-      industry, 
-      keyword, 
-      level,
-      subCategoryCode,
-      smallCategoryCode,
-    })
-    
-    let result
-    try {
-      console.log('쿼리 실행 시작...')
-      console.log('파라미터 개수:', params.length)
-      console.log('파라미터 값들:', params.map((p, i) => `$${i + 1} = ${typeof p === 'string' ? p.substring(0, 50) : p}`))
-      result = await query(sql, params)
-      console.log('쿼리 실행 완료')
-    } catch (queryError) {
-      console.error('⚠️ 쿼리 실행 오류:', queryError)
-      console.error('오류 발생 쿼리:', sql)
-      console.error('오류 발생 파라미터:', params)
-      throw queryError
-    }
-    
-    console.log('검색 결과 개수:', result.rows.length)
-    console.log('검색 결과 총 개수 (total):', total)
-    console.log('페이지네이션:', { page: pageNum, limit: limitNum, offset, totalPages: Math.ceil(total / limitNum) })
-    
-    if (result.rows.length === 0 && total > 0) {
-      console.warn('⚠️ 경고: COUNT는', total, '개인데 실제 결과는 0개입니다!')
-      console.warn('이는 LIMIT/OFFSET 문제이거나 쿼리 실행 오류일 수 있습니다.')
-    }
-    
-    // 키워드 검색 시 디버깅 정보 추가
-    if (hasKeywordSearch && keyword) {
-      console.log('=== 키워드 검색 디버깅 정보 ===')
-      console.log('검색 키워드:', keyword)
-      console.log('검색된 결과 개수:', result.rows.length)
-      console.log('총 개수 (COUNT):', total)
-      console.log('페이지네이션 정보:', { page: pageNum, limit: limitNum, offset, totalPages: Math.ceil(total / limitNum) })
-      console.log('WHERE 절:', whereClause)
-      console.log('생성된 SQL 쿼리:', sql)
-      console.log('파라미터 값:', params)
-      console.log('파라미터 개수:', params.length)
-      
-      if (result.rows.length === 0 && total === 0) {
-        console.warn('⚠️ 키워드 검색 결과가 없습니다. 다음을 확인하세요:')
-        console.warn('1. 데이터베이스에 해당 키워드가 포함된 데이터가 있는지 확인')
-        console.warn('2. 생성된 SQL 쿼리를 확인하여 검색 조건이 올바른지 확인')
-        console.warn('3. 키워드 파라미터가 올바르게 전달되었는지 확인')
-        console.warn('4. WHERE 절 조건을 확인하세요:', whereClause)
-      } else if (result.rows.length > 0) {
-        console.log('✅ 검색 성공! 첫 번째 결과:', {
-          unit_code: result.rows[0].unit_code,
-          unit_name: result.rows[0].unit_name,
-          small_category_name: result.rows[0].small_category_name,
-        })
-        console.log('✅ 검색 성공! 모든 결과의 unit_code:', result.rows.map(r => r.unit_code))
-        console.log('✅ 검색 성공! 결과 개수 비교:', {
-          실제반환된개수: result.rows.length,
-          COUNT총개수: total,
-          차이: total - result.rows.length,
-          페이지: pageNum,
-          LIMIT: limitNum,
-          OFFSET: offset
-        })
-      } else if (result.rows.length === 0 && total > 0) {
-        console.warn('⚠️ COUNT는 있지만 실제 결과가 없습니다. LIMIT/OFFSET 확인 필요')
-        console.warn('LIMIT:', limitNum, 'OFFSET:', offset, 'PAGE:', pageNum)
-        console.warn('총 개수:', total, '예상 페이지 수:', Math.ceil(total / limitNum))
-      } else if (result.rows.length < total && result.rows.length < limitNum) {
-        console.warn('⚠️ COUNT는', total, '개인데 실제 반환된 결과는', result.rows.length, '개입니다.')
-        console.warn('이는 LIMIT/OFFSET 문제이거나 GROUP BY 문제일 수 있습니다.')
-        console.warn('페이지네이션:', { page: pageNum, limit: limitNum, offset })
-      }
-    }
-    
-    // 검색 결과의 unit_code 앞 8자리 확인 (디버깅)
-    if (smallCategoryCode && smallCategoryCode.trim().length === 8) {
-      const targetCode = smallCategoryCode.trim()
-      const matchedCodes = result.rows.map(row => ({
-        unit_code: row.unit_code,
-        unit_code_prefix: row.unit_code?.substring(0, 8),
-        small_category_code: row.small_category_code,
-        matches: row.unit_code?.substring(0, 8) === targetCode
-      }))
-      console.log('검색 결과 unit_code 앞 8자리 확인:', matchedCodes)
-      const mismatched = matchedCodes.filter(item => !item.matches)
-      if (mismatched.length > 0) {
-        console.warn('⚠️ 필터 조건과 일치하지 않는 항목:', mismatched)
-      }
-    }
-
     // 결과를 AbilityUnit 형식으로 변환
     const abilityUnits = result.rows.map((row) => {
-      // 디버깅: 첫 번째 결과만 로그 출력
-      if (result.rows.indexOf(row) === 0) {
-        console.log('=== 검색 결과 첫 번째 항목 디버깅 ===')
-        console.log('DB에서 가져온 원본 데이터:', {
-          unit_code: row.unit_code,
-          major_category_name: row.major_category_name,
-          sub_category_name: row.sub_category_name,
-          small_category_name: row.small_category_name,
-          major_category_name_type: typeof row.major_category_name,
-          sub_category_name_type: typeof row.sub_category_name,
-          major_category_name_is_null: row.major_category_name === null,
-          sub_category_name_is_null: row.sub_category_name === null,
-          major_category_name_is_empty: row.major_category_name === '',
-          sub_category_name_is_empty: row.sub_category_name === '',
-        })
-      }
       
       return {
         id: row.unit_code,
@@ -412,33 +253,13 @@ router.get('/', async (req, res) => {
       hasPrev: pageNum > 1,
     }
 
-    // 응답 구조: { success: true, data: { data: [...], pagination: {...} } }
-    console.log('=== 최종 응답 데이터 ===')
-    console.log('능력단위 개수:', abilityUnits.length)
-    console.log('페이지네이션:', pagination)
-    console.log('첫 번째 항목:', abilityUnits[0] ? {
-      unit_code: abilityUnits[0].code,
-      unit_name: abilityUnits[0].name,
-      small_category_name: abilityUnits[0].jobCategory
-    } : '없음')
-    
-    const responseData = { 
+    res.json({ 
       success: true, 
       data: {
         data: abilityUnits,
         pagination
       }
-    }
-    
-    console.log('응답 데이터 구조:', {
-      success: responseData.success,
-      hasData: !!responseData.data,
-      dataLength: responseData.data?.data?.length || 0,
-      hasPagination: !!responseData.data?.pagination,
-      paginationTotal: responseData.data?.pagination?.total
     })
-    
-    res.json(responseData)
   } catch (error) {
     console.error('능력단위 검색 오류:', error)
     res.status(500).json({
