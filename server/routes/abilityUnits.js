@@ -224,9 +224,10 @@ router.get('/', async (req, res) => {
     const total = parseInt(countResult.rows[0].total) || 0
 
     // 데이터 조회 (limit, offset 파라미터 추가)
-    // keyword 검색 시 unit_element_name이 매칭되면 여러 행이 나올 수 있으므로 DISTINCT 사용
+    // keyword 검색 시 unit_element_name이 매칭되면 여러 행이 나올 수 있으므로 GROUP BY 사용
+    // GROUP BY를 사용하면 이미 그룹화되므로 DISTINCT는 불필요
     const sql = `
-      SELECT DISTINCT
+      SELECT
         n.unit_code,
         n.unit_name,
         n.unit_level,
