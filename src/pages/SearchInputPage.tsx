@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Send } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { getCategoryList } from '../services/apiService'
+import { getHierarchicalCodes } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
+import type { HierarchicalData } from '../services/apiService'
 
 export default function SearchInputPage() {
   const navigate = useNavigate()
@@ -17,64 +18,38 @@ export default function SearchInputPage() {
   const [selectedSmall, setSelectedSmall] = useState<string>('')
   const [selectedSub, setSelectedSub] = useState<string>('')
 
-  // 각 단계별 목록 로드
+  // 계층구조 데이터 로드
   const {
-    data: majorList = [],
-    execute: loadMajors,
-  } = useAsync(() => getCategoryList('major'), { immediate: false })
+    data: hierarchicalData = [],
+    execute: loadHierarchical,
+  } = useAsync(() => getHierarchicalCodes(), { immediate: false })
 
-  const {
-    data: middleList = [],
-    execute: loadMiddles,
-  } = useAsync(() => getCategoryList('middle', selectedMajor), { immediate: false })
-
-  const {
-    data: smallList = [],
-    execute: loadSmalls,
-  } = useAsync(() => getCategoryList('small', selectedMajor && selectedMiddle ? `${selectedMajor}|${selectedMiddle}` : undefined), { immediate: false })
-
-  const {
-    data: subList = [],
-    execute: loadSubs,
-  } = useAsync(() => getCategoryList('sub', selectedMajor && selectedMiddle && selectedSmall ? `${selectedMajor}|${selectedMiddle}|${selectedSmall}` : undefined), { immediate: false })
-
-  // 컴포넌트 마운트 시 Major 목록 로드
+  // 컴포넌트 마운트 시 계층구조 데이터 로드
   useEffect(() => {
     if (mode === 'job') {
-      loadMajors()
+      loadHierarchical()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
 
-  // Major 선택 시 Middle 목록 로드
-  useEffect(() => {
-    if (selectedMajor) {
-      loadMiddles()
+  // 선택 초기화 함수
+  const resetSelection = (level: 'major' | 'middle' | 'small' | 'sub') => {
+    if (level === 'major') {
+      setSelectedMajor('')
       setSelectedMiddle('')
       setSelectedSmall('')
       setSelectedSub('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMajor])
-
-  // Middle 선택 시 Small 목록 로드
-  useEffect(() => {
-    if (selectedMajor && selectedMiddle) {
-      loadSmalls()
+    } else if (level === 'middle') {
+      setSelectedMiddle('')
       setSelectedSmall('')
       setSelectedSub('')
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMajor, selectedMiddle])
-
-  // Small 선택 시 Sub 목록 로드
-  useEffect(() => {
-    if (selectedMajor && selectedMiddle && selectedSmall) {
-      loadSubs()
+    } else if (level === 'small') {
+      setSelectedSmall('')
+      setSelectedSub('')
+    } else if (level === 'sub') {
       setSelectedSub('')
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMajor, selectedMiddle, selectedSmall])
+  }
 
   // 키워드 모드 처리
   const [inputValue, setInputValue] = useState('')
@@ -173,140 +148,169 @@ export default function SearchInputPage() {
     setSelectedSub('')
   }
 
+  // 현재 선택된 계층에 따른 표시할 데이터
+  const getCurrentLevelData = () => {
+    if (!selectedMajor) {
+      // 대분류 목록
+      return hierarchicalData.map((item) => ({
+        type: 'major' as const,
+        name: item.major,
+        data: item,
+      }))
+    }
+
+    const selectedMajorData = hierarchicalData.find((item) => item.major === selectedMajor)
+    if (!selectedMajorData) return []
+
+    if (!selectedMiddle) {
+      // 중분류 목록
+      return selectedMajorData.middles.map((middle) => ({
+        type: 'middle' as const,
+        name: middle.name,
+        data: middle,
+      }))
+    }
+
+    const selectedMiddleData = selectedMajorData.middles.find((m) => m.name === selectedMiddle)
+    if (!selectedMiddleData) return []
+
+    if (!selectedSmall) {
+      // 소분류 목록
+      return selectedMiddleData.smalls.map((small) => ({
+        type: 'small' as const,
+        name: small.name,
+        data: small,
+      }))
+    }
+
+    const selectedSmallData = selectedMiddleData.smalls.find((s) => s.name === selectedSmall)
+    if (!selectedSmallData) return []
+
+    // 세분류 목록
+    return selectedSmallData.subs.map((sub) => ({
+      type: 'sub' as const,
+      name: sub,
+      data: null,
+    }))
+  }
+
+  const currentLevelData = getCurrentLevelData()
+
+  const getLevelLabel = () => {
+    if (!selectedMajor) return '대분류'
+    if (!selectedMiddle) return '중분류'
+    if (!selectedSmall) return '소분류'
+    return '세분류'
+  }
+
+  const handleItemClick = (type: 'major' | 'middle' | 'small' | 'sub', name: string) => {
+    if (type === 'major') {
+      setSelectedMajor(name)
+      resetSelection('major')
+    } else if (type === 'middle') {
+      setSelectedMiddle(name)
+      resetSelection('middle')
+    } else if (type === 'small') {
+      setSelectedSmall(name)
+      resetSelection('small')
+    } else if (type === 'sub') {
+      setSelectedSub(name)
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-col gap-6">
         {/* 계층구조 선택 (직무 모드일 때만 표시) */}
         {mode === 'job' && (
-          <div className="w-full bg-white rounded-lg shadow p-4 space-y-4">
+          <div className="w-full bg-white rounded-lg shadow p-6 space-y-4">
             <h3 className="font-semibold text-gray-900 mb-4">계층구조 선택</h3>
 
-            {/* 4개 드롭다운 가로 배치 */}
-            <div className="grid grid-cols-4 gap-4">
-              {/* 대분류 (Major) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  대분류
-                </label>
-                <select
-                  value={selectedMajor}
-                  onChange={(e) => setSelectedMajor(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">선택하세요</option>
-                  {(majorList || []).map((major) => (
-                    <option key={major} value={major}>
-                      {major}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 중분류 (Middle) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  중분류
-                </label>
-                <select
-                  value={selectedMiddle}
-                  onChange={(e) => setSelectedMiddle(e.target.value)}
-                  disabled={!selectedMajor}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">선택하세요</option>
-                  {(middleList || []).map((middle) => (
-                    <option key={middle} value={middle}>
-                      {middle}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 소분류 (Small) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  소분류
-                </label>
-                <select
-                  value={selectedSmall}
-                  onChange={(e) => setSelectedSmall(e.target.value)}
-                  disabled={!selectedMajor || !selectedMiddle}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">선택하세요</option>
-                  {(smallList || []).map((small) => (
-                    <option key={small} value={small}>
-                      {small}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* 세분류 (Sub) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  세분류
-                </label>
-                <select
-                  value={selectedSub}
-                  onChange={(e) => setSelectedSub(e.target.value)}
-                  disabled={!selectedMajor || !selectedMiddle || !selectedSmall}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-                >
-                  <option value="">선택하세요</option>
-                  {(subList || []).map((sub) => (
-                    <option key={sub} value={sub}>
-                      {sub}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 선택된 계층구조 표시 */}
+            {/* 선택 경로 표시 */}
             {(selectedMajor || selectedMiddle || selectedSmall || selectedSub) && (
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                <p className="text-xs text-gray-700 mb-2 font-semibold">
-                  선택된 계층구조:
-                </p>
-                <div className="flex flex-col space-y-1 text-xs">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-3 mb-4">
+                <p className="text-sm text-gray-700 mb-2 font-semibold">선택된 경로:</p>
+                <div className="flex items-center space-x-2 text-sm flex-wrap">
                   {selectedMajor && (
-                    <span className="px-2 py-1 bg-blue-600 text-white rounded">
-                      대분류: {selectedMajor}
-                    </span>
+                    <>
+                      <button
+                        onClick={() => resetSelection('major')}
+                        className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      >
+                        {selectedMajor}
+                      </button>
+                      {selectedMiddle && <span className="text-gray-400">→</span>}
+                    </>
                   )}
                   {selectedMiddle && (
-                    <span className="px-2 py-1 bg-blue-500 text-white rounded">
-                      중분류: {selectedMiddle}
-                    </span>
+                    <>
+                      <button
+                        onClick={() => resetSelection('middle')}
+                        className="px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                      >
+                        {selectedMiddle}
+                      </button>
+                      {selectedSmall && <span className="text-gray-400">→</span>}
+                    </>
                   )}
                   {selectedSmall && (
-                    <span className="px-2 py-1 bg-blue-400 text-white rounded">
-                      소분류: {selectedSmall}
-                    </span>
+                    <>
+                      <button
+                        onClick={() => resetSelection('small')}
+                        className="px-2 py-1 bg-blue-400 text-white rounded hover:bg-blue-500"
+                      >
+                        {selectedSmall}
+                      </button>
+                      {selectedSub && <span className="text-gray-400">→</span>}
+                    </>
                   )}
                   {selectedSub && (
                     <span className="px-2 py-1 bg-blue-300 text-white rounded">
-                      세분류: {selectedSub}
+                      {selectedSub}
                     </span>
                   )}
                 </div>
               </div>
             )}
 
+            {/* 현재 레벨 버튼 목록 */}
+            <div>
+              <h4 className="text-sm font-medium text-gray-700 mb-3">
+                {getLevelLabel()} 선택
+              </h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {currentLevelData.map((item, index) => (
+                  <button
+                    key={`${item.type}-${item.name}-${index}`}
+                    onClick={() => handleItemClick(item.type, item.name)}
+                    className={`px-4 py-2 rounded-md text-sm transition ${
+                      (item.type === 'major' && selectedMajor === item.name) ||
+                      (item.type === 'middle' && selectedMiddle === item.name) ||
+                      (item.type === 'small' && selectedSmall === item.name) ||
+                      (item.type === 'sub' && selectedSub === item.name)
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 검색 버튼 */}
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 pt-4 border-t">
               <button
                 onClick={handleSubmit}
                 disabled={!selectedMajor}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm"
+                className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
                 <span>검색</span>
               </button>
               <button
                 onClick={handleReset}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition text-sm"
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
               >
                 초기화
               </button>
@@ -347,16 +351,16 @@ export default function SearchInputPage() {
           ) : (
             <div className="space-y-4">
               <p className="text-gray-600">
-                왼쪽의 계층구조 선택 패널에서 대분류, 중분류, 소분류, 세분류를 선택하여 검색하세요.
+                위의 계층구조 선택 패널에서 대분류, 중분류, 소분류, 세분류를 선택하여 검색하세요.
               </p>
               <div className="bg-gray-50 border rounded-lg p-4">
                 <p className="text-sm text-gray-500 mb-2">
                   <strong>사용 방법:</strong>
                 </p>
                 <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
-                  <li>대분류를 선택하면 중분류 목록이 표시됩니다</li>
-                  <li>중분류를 선택하면 소분류 목록이 표시됩니다</li>
-                  <li>소분류를 선택하면 세분류 목록이 표시됩니다</li>
+                  <li>대분류 버튼을 클릭하면 중분류 목록이 표시됩니다</li>
+                  <li>중분류 버튼을 클릭하면 소분류 목록이 표시됩니다</li>
+                  <li>소분류 버튼을 클릭하면 세분류 목록이 표시됩니다</li>
                   <li>원하는 단계까지 선택한 후 검색 버튼을 클릭하세요</li>
                 </ul>
               </div>
