@@ -196,6 +196,16 @@ export async function getStandardCodes(
   return fetchApi<string[]>(`/standard-codes/${type}`)
 }
 
+// 계층구조 목록 조회 API (산업분야별 직무군)
+export interface HierarchicalData {
+  industry: string
+  jobCategories: string[]
+}
+
+export async function getHierarchicalCodes(): Promise<ApiResponse<HierarchicalData[]>> {
+  return fetchApi<HierarchicalData[]>('/standard-codes/hierarchical')
+}
+
 // 능력단위 요소 조회 API
 export async function getAbilityElements(
   abilityUnitId: string

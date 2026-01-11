@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Filter, ClipboardList, Eye, Search } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { searchAbilityUnits, saveSelectionHistory, getStandardCodes } from '../services/apiService'
+import { searchAbilityUnits, saveSelectionHistory, getHierarchicalCodes } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
 import Loading from '../components/Loading'
 import ErrorMessage from '../components/ErrorMessage'
@@ -20,21 +20,25 @@ export default function SearchResultsPage() {
   })
   const [pagination, setPagination] = useState<PaginationMeta | null>(null)
 
-  // 표준 코드 로드
+  // 계층구조 데이터 로드
   const {
-    data: industryCodes = [],
-    execute: loadIndustries,
-  } = useAsync(() => getStandardCodes('industries'), { immediate: false })
-  
-  const {
-    data: jobCodes = [],
-    execute: loadJobs,
-  } = useAsync(() => getStandardCodes('jobs'), { immediate: false })
+    data: hierarchicalData,
+    execute: loadHierarchical,
+  } = useAsync(() => getHierarchicalCodes(), { immediate: false })
 
-  // 컴포넌트 마운트 시 표준 코드 로드
+  // 산업분야 목록 추출
+  const industryCodes = (hierarchicalData || []).map((item) => item.industry)
+
+  // 선택된 산업분야에 해당하는 직무군 목록 (중복 제거)
+  const jobCodes = localFilters.industry
+    ? (hierarchicalData || [])
+        .find((item) => item.industry === localFilters.industry)
+        ?.jobCategories || []
+    : Array.from(new Set((hierarchicalData || []).flatMap((item) => item.jobCategories)))
+
+  // 컴포넌트 마운트 시 계층구조 데이터 로드
   useEffect(() => {
-    loadIndustries()
-    loadJobs()
+    loadHierarchical()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -174,6 +178,10 @@ export default function SearchResultsPage() {
 
   // 필터 변경 시 localFilters만 업데이트 (자동 검색 안 함)
   const handleFilterChange = (newFilters: SearchFilters) => {
+    // 산업분야가 변경되면 직무군 필터 초기화
+    if (newFilters.industry !== localFilters.industry) {
+      newFilters.jobCategory = undefined
+    }
     setLocalFilters({ ...newFilters, page: 1, limit: 20 })
   }
 

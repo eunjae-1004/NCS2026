@@ -313,6 +313,25 @@ export async function getStandardCodes(
   return []
 }
 
+// 계층구조 목록 조회 (산업분야별 직무군)
+export interface HierarchicalData {
+  industry: string
+  jobCategories: string[]
+}
+
+export async function getHierarchicalCodes(): Promise<HierarchicalData[]> {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    return []
+  }
+
+  const response = await api.getHierarchicalCodes()
+  if (response.success && response.data) {
+    return response.data
+  }
+  return []
+}
+
 // 세트 저장
 export async function saveCartSet(
   userId: string,
