@@ -26,15 +26,31 @@ export default function SearchResultsPage() {
     execute: loadHierarchical,
   } = useAsync(() => getHierarchicalCodes(), { immediate: false })
 
-  // 산업분야 목록 추출
-  const industryCodes = (hierarchicalData || []).map((item) => item.industry)
+  // 산업분야 목록 추출 (major에서 추출)
+  const industryCodes = (hierarchicalData || []).map((item) => item.major)
 
   // 선택된 산업분야에 해당하는 직무군 목록 (중복 제거)
+  // 새로운 계층구조에서는 middles -> smalls -> subs 구조이므로
+  // 모든 subs를 평탄화하여 추출
   const jobCodes = localFilters.industry
-    ? (hierarchicalData || [])
-        .find((item) => item.industry === localFilters.industry)
-        ?.jobCategories || []
-    : Array.from(new Set((hierarchicalData || []).flatMap((item) => item.jobCategories)))
+    ? (() => {
+        const selectedIndustry = (hierarchicalData || []).find((item) => item.major === localFilters.industry)
+        if (!selectedIndustry) return []
+        const allSubs: string[] = []
+        selectedIndustry.middles.forEach((middle) => {
+          middle.smalls.forEach((small) => {
+            allSubs.push(...small.subs)
+          })
+        })
+        return Array.from(new Set(allSubs))
+      })()
+    : Array.from(
+        new Set(
+          (hierarchicalData || []).flatMap((item) =>
+            item.middles.flatMap((middle) => middle.smalls.flatMap((small) => small.subs))
+          )
+        )
+      )
 
   // 컴포넌트 마운트 시 계층구조 데이터 로드
   useEffect(() => {
@@ -332,7 +348,7 @@ export default function SearchResultsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">전체</option>
-                {industryCodes && industryCodes.length > 0 && industryCodes.map((code) => (
+                {industryCodes && industryCodes.length > 0 && industryCodes.map((code: string) => (
                   <option key={code} value={code}>
                     {code}
                   </option>
@@ -356,7 +372,7 @@ export default function SearchResultsPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
               >
                 <option value="">전체</option>
-                {jobCodes && jobCodes.length > 0 && jobCodes.map((code) => (
+                {jobCodes && jobCodes.length > 0 && jobCodes.map((code: string) => (
                   <option key={code} value={code}>
                     {code}
                   </option>

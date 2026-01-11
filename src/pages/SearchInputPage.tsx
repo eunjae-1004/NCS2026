@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Send, ChevronDown } from 'lucide-react'
+import { Send } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { getCategoryList } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
-import ErrorMessage from '../components/ErrorMessage'
 
 export default function SearchInputPage() {
   const navigate = useNavigate()
@@ -195,7 +194,7 @@ export default function SearchInputPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">선택하세요</option>
-                  {majorList.map((major) => (
+                  {(majorList || []).map((major) => (
                     <option key={major} value={major}>
                       {major}
                     </option>
@@ -215,7 +214,7 @@ export default function SearchInputPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">선택하세요</option>
-                  {middleList.map((middle) => (
+                  {(middleList || []).map((middle) => (
                     <option key={middle} value={middle}>
                       {middle}
                     </option>
@@ -235,7 +234,7 @@ export default function SearchInputPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">선택하세요</option>
-                  {smallList.map((small) => (
+                  {(smallList || []).map((small) => (
                     <option key={small} value={small}>
                       {small}
                     </option>
@@ -255,7 +254,7 @@ export default function SearchInputPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">선택하세요</option>
-                  {subList.map((sub) => (
+                  {(subList || []).map((sub) => (
                     <option key={sub} value={sub}>
                       {sub}
                     </option>
