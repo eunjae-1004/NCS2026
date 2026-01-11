@@ -39,7 +39,8 @@ router.get('/', async (req, res) => {
       paramIndex++
     }
 
-    // 직무 필터 (small_category_name, unit_name 등에서 검색)
+    // 직무군 필터 (sub_category_name으로 검색)
+    // 검색 기준: ncs_main.sub_category_name
     if (jobCategory) {
       const trimmedJobCategory = jobCategory.trim()
       
@@ -56,15 +57,8 @@ router.get('/', async (req, res) => {
             const jobParam = `%${kw}%`
             const currentParamIndex = paramIndex + idx
             
-            // 검색 대상:
-            // 1. 세분류명 (small_category_name) - 직무군/직무
-            // 2. 능력단위명 (unit_name) - 직무 제목과 유사할 수 있음
-            // 3. 능력단위요소명 (unit_element_name)
-            jobConditions.push(`(
-              n.small_category_name ILIKE $${currentParamIndex} OR
-              n.unit_name ILIKE $${currentParamIndex} OR
-              n.unit_element_name ILIKE $${currentParamIndex}
-            )`)
+            // 검색 대상: sub_category_name (소분류명) - 직무군
+            jobConditions.push(`n.sub_category_name ILIKE $${currentParamIndex}`)
             params.push(jobParam)
           })
           
@@ -88,7 +82,8 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // 산업 필터 (major_category_name으로 검색)
+    // 산업분야 필터 (major_category_name으로 검색)
+    // 검색 기준: ncs_main.major_category_name
     if (industry) {
       whereClause += ` AND n.major_category_name ILIKE $${paramIndex}`
       params.push(`%${industry}%`)
@@ -114,6 +109,8 @@ router.get('/', async (req, res) => {
       }
     }
 
+    // 레벨 필터 (unit_level로 검색)
+    // 검색 기준: ncs_main.unit_level (정확히 일치)
     if (level) {
       whereClause += ` AND n.unit_level = $${paramIndex}`
       params.push(parseInt(level))

@@ -20,7 +20,7 @@ router.get('/:type', async (req, res) => {
       SELECT name
       FROM standard_codes
       WHERE type = $1
-      ORDER BY name
+      ORDER BY code ASC
     `
     const result = await query(selectQuery, [type])
 

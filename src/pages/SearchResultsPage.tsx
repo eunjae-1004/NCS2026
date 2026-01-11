@@ -22,11 +22,6 @@ export default function SearchResultsPage() {
 
   // 표준 코드 로드
   const {
-    data: departmentCodes = [],
-    execute: loadDepartments,
-  } = useAsync(() => getStandardCodes('departments'), { immediate: false })
-  
-  const {
     data: industryCodes = [],
     execute: loadIndustries,
   } = useAsync(() => getStandardCodes('industries'), { immediate: false })
@@ -38,7 +33,6 @@ export default function SearchResultsPage() {
 
   // 컴포넌트 마운트 시 표준 코드 로드
   useEffect(() => {
-    loadDepartments()
     loadIndustries()
     loadJobs()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -331,30 +325,6 @@ export default function SearchResultsPage() {
               >
                 <option value="">전체</option>
                 {industryCodes && industryCodes.length > 0 && industryCodes.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                부서
-              </label>
-              <select
-                value={
-                  localFilters.department && departmentCodes && departmentCodes.includes(localFilters.department)
-                    ? localFilters.department
-                    : ''
-                }
-                onChange={(e) =>
-                  handleFilterChange({ ...localFilters, department: e.target.value || undefined })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">전체</option>
-                {departmentCodes && departmentCodes.length > 0 && departmentCodes.map((code) => (
                   <option key={code} value={code}>
                     {code}
                   </option>
