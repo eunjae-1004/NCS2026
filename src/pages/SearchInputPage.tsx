@@ -4,7 +4,6 @@ import { Send } from 'lucide-react'
 import { useStore } from '../store/useStore'
 import { getHierarchicalCodes } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
-import type { HierarchicalData } from '../services/apiService'
 
 export default function SearchInputPage() {
   const navigate = useNavigate()
@@ -36,7 +35,7 @@ export default function SearchInputPage() {
 
   // 디버깅: 계층구조 데이터 로드 확인
   useEffect(() => {
-    if (hierarchicalData.length > 0) {
+    if (hierarchicalData && hierarchicalData.length > 0) {
       console.log('계층구조 데이터 로드됨:', hierarchicalData.length, '개')
       console.log('첫 번째 항목:', hierarchicalData[0])
     } else if (!hierarchicalLoading && !hierarchicalError) {
@@ -165,6 +164,10 @@ export default function SearchInputPage() {
 
   // 현재 선택된 계층에 따른 표시할 데이터
   const getCurrentLevelData = () => {
+    if (!hierarchicalData || hierarchicalData.length === 0) {
+      return []
+    }
+
     if (!selectedMajor) {
       // 대분류 목록
       return hierarchicalData.map((item) => ({
