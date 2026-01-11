@@ -4,56 +4,79 @@ import { query } from '../db.js'
 
 const router = express.Router()
 
-// 계층구조 목록 조회 (산업분야별 직무군)
+// 4단계 계층구조 목록 조회 (major -> middle -> small -> sub)
 router.get('/hierarchical', async (req, res) => {
   try {
-    // ncs_main에서 산업분야(major_category_name)와 직무군(sub_category_name)을 계층구조로 조회
-    // id_ncs 오름차순으로 정렬하여 각 산업분야별로 첫 번째 등장하는 순서대로 직무군 정리
+    // ncs_main에서 4단계 계층구조를 id_ncs 오름차순으로 조회
     const hierarchicalQuery = `
       SELECT 
         n.id_ncs,
-        n.major_category_name as industry,
-        n.sub_category_name as job_category
+        n.major_category_name,
+        n.middle_category_name,
+        n.small_category_name,
+        n.sub_category_name
       FROM ncs_main n
       WHERE n.major_category_name IS NOT NULL 
         AND n.major_category_name != ''
-        AND n.sub_category_name IS NOT NULL 
-        AND n.sub_category_name != ''
       ORDER BY n.id_ncs ASC
     `
     const result = await query(hierarchicalQuery, [])
 
-    // 계층구조로 변환 (id_ncs 순서 유지)
+    // 4단계 계층구조로 변환 (id_ncs 순서 유지)
     const hierarchical = {}
-    const industryOrder = [] // 산업분야 등장 순서
-    const jobCategoryOrder = {} // 각 산업분야별 직무군 등장 순서
+    const majorOrder = []
 
     result.rows.forEach((row) => {
-      const industry = row.industry
-      const jobCategory = row.job_category
+      const major = row.major_category_name
+      const middle = row.middle_category_name
+      const small = row.small_category_name
+      const sub = row.sub_category_name
 
-      // 산업분야 순서 기록
-      if (!hierarchical[industry]) {
-        hierarchical[industry] = []
-        industryOrder.push(industry)
+      // Major 레벨
+      if (!hierarchical[major]) {
+        hierarchical[major] = {}
+        majorOrder.push(major)
       }
 
-      // 각 산업분야별 직무군 등장 순서 기록 (중복 제거하면서 순서 유지)
-      if (!jobCategoryOrder[industry]) {
-        jobCategoryOrder[industry] = []
-      }
+      // Middle 레벨
+      if (middle) {
+        if (!hierarchical[major][middle]) {
+          hierarchical[major][middle] = {}
+        }
 
-      if (!jobCategoryOrder[industry].includes(jobCategory)) {
-        jobCategoryOrder[industry].push(jobCategory)
-        hierarchical[industry].push(jobCategory)
+        // Small 레벨
+        if (small) {
+          if (!hierarchical[major][middle][small]) {
+            hierarchical[major][middle][small] = []
+          }
+
+          // Sub 레벨 (중복 제거하면서 순서 유지)
+          if (sub && !hierarchical[major][middle][small].includes(sub)) {
+            hierarchical[major][middle][small].push(sub)
+          }
+        }
       }
     })
 
-    // 배열 형태로 변환 (id_ncs 순서대로)
-    const data = industryOrder.map((industry) => ({
-      industry,
-      jobCategories: hierarchical[industry],
-    }))
+    // 배열 형태로 변환
+    const data = majorOrder.map((major) => {
+      const middleData = Object.keys(hierarchical[major])
+        .map((middle) => {
+          const smallData = Object.keys(hierarchical[major][middle])
+            .map((small) => ({
+              name: small,
+              subs: hierarchical[major][middle][small],
+            }))
+          return {
+            name: middle,
+            smalls: smallData,
+          }
+        })
+      return {
+        major,
+        middles: middleData,
+      }
+    })
 
     res.json({ success: true, data })
   } catch (error) {
@@ -61,6 +84,106 @@ router.get('/hierarchical', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || '계층구조 목록 조회 중 오류가 발생했습니다.',
+    })
+  }
+})
+
+// 단계별 목록 조회 (major, middle, small, sub)
+router.get('/category/:level', async (req, res) => {
+  try {
+    const { level } = req.params
+    const { parent } = req.query
+
+    if (!['major', 'middle', 'small', 'sub'].includes(level)) {
+      return res.status(400).json({
+        success: false,
+        error: '유효하지 않은 레벨입니다. (major, middle, small, sub)',
+      })
+    }
+
+    let query = ''
+    let params = []
+
+    if (level === 'major') {
+      query = `
+        SELECT DISTINCT ON (major_category_name)
+          major_category_name as name,
+          id_ncs
+        FROM ncs_main
+        WHERE major_category_name IS NOT NULL 
+          AND major_category_name != ''
+        ORDER BY major_category_name, id_ncs ASC
+      `
+    } else if (level === 'middle') {
+      if (!parent) {
+        return res.status(400).json({
+          success: false,
+          error: 'parent 파라미터가 필요합니다.',
+        })
+      }
+      query = `
+        SELECT DISTINCT ON (middle_category_name)
+          middle_category_name as name,
+          id_ncs
+        FROM ncs_main
+        WHERE major_category_name = $1
+          AND middle_category_name IS NOT NULL 
+          AND middle_category_name != ''
+        ORDER BY middle_category_name, id_ncs ASC
+      `
+      params = [parent]
+    } else if (level === 'small') {
+      if (!parent) {
+        return res.status(400).json({
+          success: false,
+          error: 'parent 파라미터가 필요합니다.',
+        })
+      }
+      const [major, middle] = parent.split('|')
+      query = `
+        SELECT DISTINCT ON (small_category_name)
+          small_category_name as name,
+          id_ncs
+        FROM ncs_main
+        WHERE major_category_name = $1
+          AND middle_category_name = $2
+          AND small_category_name IS NOT NULL 
+          AND small_category_name != ''
+        ORDER BY small_category_name, id_ncs ASC
+      `
+      params = [major, middle]
+    } else if (level === 'sub') {
+      if (!parent) {
+        return res.status(400).json({
+          success: false,
+          error: 'parent 파라미터가 필요합니다.',
+        })
+      }
+      const [major, middle, small] = parent.split('|')
+      query = `
+        SELECT DISTINCT ON (sub_category_name)
+          sub_category_name as name,
+          id_ncs
+        FROM ncs_main
+        WHERE major_category_name = $1
+          AND middle_category_name = $2
+          AND small_category_name = $3
+          AND sub_category_name IS NOT NULL 
+          AND sub_category_name != ''
+        ORDER BY sub_category_name, id_ncs ASC
+      `
+      params = [major, middle, small]
+    }
+
+    const result = await query(query, params)
+    const data = result.rows.map((row) => row.name)
+
+    res.json({ success: true, data })
+  } catch (error) {
+    console.error('카테고리 목록 조회 오류:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message || '카테고리 목록 조회 중 오류가 발생했습니다.',
     })
   }
 })

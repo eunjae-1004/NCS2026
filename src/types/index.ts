@@ -51,9 +51,11 @@ export interface PerformanceCriterion {
 
 // 검색 필터 타입
 export interface SearchFilters {
-  industry?: string
+  industry?: string // major_category_name
+  middle?: string // middle_category_name
+  small?: string // small_category_name
   department?: string
-  jobCategory?: string
+  jobCategory?: string // sub_category_name
   jobTitle?: string
   level?: number
   keyword?: string

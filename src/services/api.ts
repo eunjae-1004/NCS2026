@@ -86,6 +86,8 @@ export async function searchAbilityUnits(
   const queryParams = new URLSearchParams()
   
   if (filters.industry) queryParams.append('industry', filters.industry)
+  if (filters.middle) queryParams.append('middle', filters.middle)
+  if (filters.small) queryParams.append('small', filters.small)
   if (filters.department) queryParams.append('department', filters.department)
   if (filters.jobCategory) queryParams.append('jobCategory', filters.jobCategory)
   if (filters.jobTitle) queryParams.append('jobTitle', filters.jobTitle)
@@ -196,14 +198,31 @@ export async function getStandardCodes(
   return fetchApi<string[]>(`/standard-codes/${type}`)
 }
 
-// 계층구조 목록 조회 API (산업분야별 직무군)
+// 4단계 계층구조 목록 조회 API
 export interface HierarchicalData {
-  industry: string
-  jobCategories: string[]
+  major: string
+  middles: Array<{
+    name: string
+    smalls: Array<{
+      name: string
+      subs: string[]
+    }>
+  }>
 }
 
 export async function getHierarchicalCodes(): Promise<ApiResponse<HierarchicalData[]>> {
   return fetchApi<HierarchicalData[]>('/standard-codes/hierarchical')
+}
+
+// 단계별 카테고리 목록 조회 API
+export async function getCategoryList(
+  level: 'major' | 'middle' | 'small' | 'sub',
+  parent?: string
+): Promise<ApiResponse<string[]>> {
+  const url = parent
+    ? `/standard-codes/category/${level}?parent=${encodeURIComponent(parent)}`
+    : `/standard-codes/category/${level}`
+  return fetchApi<string[]>(url)
 }
 
 // 능력단위 요소 조회 API

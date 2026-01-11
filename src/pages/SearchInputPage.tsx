@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Send, ChevronDown } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { mapAlias, getStandardCodes } from '../services/apiService'
+import { getCategoryList } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
 import ErrorMessage from '../components/ErrorMessage'
-import type { AliasMapping } from '../types'
 
 export default function SearchInputPage() {
   const navigate = useNavigate()
@@ -13,51 +12,78 @@ export default function SearchInputPage() {
   const mode = searchParams.get('mode') || 'job'
   const { setFilters } = useStore()
 
-  const [inputType, setInputType] = useState<'free' | 'dropdown'>('free')
-  const [inputValue, setInputValue] = useState('')
-  const [messages, setMessages] = useState<Array<{ 
-    type: 'user' | 'system'
-    content: string
-    mapping?: AliasMapping
-    mappingType?: 'department' | 'industry' | 'job'
-  }>>([
-    {
-      type: 'system',
-      content: mode === 'job' 
-        ? '직무, 산업, 부서를 입력해주세요. (예: "품질관리팀", "QA", "품질팀")'
-        : '검색할 키워드를 입력해주세요.',
-    },
-  ])
-  const [showDropdown, setShowDropdown] = useState(false)
-  const [selectedCategory, setSelectedCategory] = useState<'departments' | 'industries' | 'jobs'>('departments')
-  const [mappingError, setMappingError] = useState<string | null>(null)
+  // 4단계 계층구조 선택 상태
+  const [selectedMajor, setSelectedMajor] = useState<string>('')
+  const [selectedMiddle, setSelectedMiddle] = useState<string>('')
+  const [selectedSmall, setSelectedSmall] = useState<string>('')
+  const [selectedSub, setSelectedSub] = useState<string>('')
 
-  // 표준 코드 로드 (selectedCategory 변경 시에만)
+  // 각 단계별 목록 로드
   const {
-    data: standardCodes,
-    loading: codesLoading,
-    error: codesError,
-    execute: loadStandardCodes,
-  } = useAsync(() => getStandardCodes(selectedCategory), { immediate: false })
+    data: majorList = [],
+    execute: loadMajors,
+  } = useAsync(() => getCategoryList('major'), { immediate: false })
 
-  const standardCodesList = standardCodes || []
-  
-  // selectedCategory 변경 시 표준 코드 로드
+  const {
+    data: middleList = [],
+    execute: loadMiddles,
+  } = useAsync(() => getCategoryList('middle', selectedMajor), { immediate: false })
+
+  const {
+    data: smallList = [],
+    execute: loadSmalls,
+  } = useAsync(() => getCategoryList('small', selectedMajor && selectedMiddle ? `${selectedMajor}|${selectedMiddle}` : undefined), { immediate: false })
+
+  const {
+    data: subList = [],
+    execute: loadSubs,
+  } = useAsync(() => getCategoryList('sub', selectedMajor && selectedMiddle && selectedSmall ? `${selectedMajor}|${selectedMiddle}|${selectedSmall}` : undefined), { immediate: false })
+
+  // 컴포넌트 마운트 시 Major 목록 로드
   useEffect(() => {
-    loadStandardCodes()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCategory])
-  
-  // 디버깅: 표준 코드 로드 확인
-  useEffect(() => {
-    if (standardCodesList.length > 0) {
-      console.log('표준 코드 로드됨:', selectedCategory, standardCodesList)
+    if (mode === 'job') {
+      loadMajors()
     }
-  }, [standardCodesList, selectedCategory])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
 
-  // 핵심 키워드 추출 함수
+  // Major 선택 시 Middle 목록 로드
+  useEffect(() => {
+    if (selectedMajor) {
+      loadMiddles()
+      // 하위 선택 초기화
+      setSelectedMiddle('')
+      setSelectedSmall('')
+      setSelectedSub('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMajor])
+
+  // Middle 선택 시 Small 목록 로드
+  useEffect(() => {
+    if (selectedMajor && selectedMiddle) {
+      loadSmalls()
+      // 하위 선택 초기화
+      setSelectedSmall('')
+      setSelectedSub('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMajor, selectedMiddle])
+
+  // Small 선택 시 Sub 목록 로드
+  useEffect(() => {
+    if (selectedMajor && selectedMiddle && selectedSmall) {
+      loadSubs()
+      // 하위 선택 초기화
+      setSelectedSub('')
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMajor, selectedMiddle, selectedSmall])
+
+  // 키워드 모드 처리
+  const [inputValue, setInputValue] = useState('')
+
   const extractKeyword = (input: string): string => {
-    // 불필요한 단어 제거 패턴
     const stopWords = [
       '관련', '직무를', '직무', '찾아줘', '찾아', '보여줘', '알려줘', '검색해줘',
       '의', '을', '를', '이', '가', '에', '에서', '로', '으로', '와', '과',
@@ -69,37 +95,29 @@ export default function SearchInputPage() {
     
     let cleaned = input.trim()
     
-    // 불필요한 단어 제거
     stopWords.forEach(word => {
       const regex = new RegExp(`\\s*${word}\\s*`, 'gi')
       cleaned = cleaned.replace(regex, ' ')
     })
     
-    // 연속된 공백 제거 및 앞뒤 공백 제거
     cleaned = cleaned.replace(/\s+/g, ' ').trim()
     
-    // 결과가 비어있으면 원본 반환
     if (!cleaned) {
       return input.trim()
     }
     
-    // 여러 단어가 있으면 가장 긴 단어나 첫 번째 의미있는 단어 선택
     const words = cleaned.split(/\s+/)
     
-    // 단어가 하나면 그대로 반환
     if (words.length === 1) {
       return words[0]
     }
     
-    // 여러 단어 중 가장 긴 단어 선택 (일반적으로 핵심 키워드가 더 길 수 있음)
     const longestWord = words.reduce((a, b) => a.length > b.length ? a : b)
     
-    // 가장 긴 단어가 너무 짧으면 (2자 이하) 전체를 반환
     if (longestWord.length <= 2) {
       return cleaned
     }
     
-    // 가장 긴 단어가 전체의 50% 이상이면 그 단어만 반환, 아니면 전체 반환
     if (longestWord.length >= cleaned.length * 0.5) {
       return longestWord
     }
@@ -107,147 +125,63 @@ export default function SearchInputPage() {
     return cleaned
   }
 
-  const handleSubmit = async () => {
-    if (!inputValue.trim()) return
-
-    setMappingError(null)
-
-    // 사용자 메시지 추가
-    const userInput = inputValue.trim()
-    setMessages((prev) => [
-      ...prev,
-      { type: 'user', content: userInput },
-    ])
-
-    try {
-      // 키워드 모드: 핵심 키워드 추출 후 검색
-      if (mode === 'keyword') {
-        const extractedKeyword = extractKeyword(userInput)
-        const newFilters: any = {
-          keyword: extractedKeyword
-        }
-        
-        setFilters(newFilters)
-        console.log('키워드 필터 설정 완료:', { 원본: userInput, 추출된키워드: extractedKeyword, 필터: newFilters })
-        
-        // 추출된 키워드가 원본과 다르면 시스템 메시지 추가
-        if (extractedKeyword !== userInput) {
-          setMessages((prev) => [
-            ...prev,
-            {
-              type: 'system',
-              content: `핵심 키워드 "${extractedKeyword}"로 검색합니다.`,
-            },
-          ])
-        }
-        
-        // 바로 검색 결과 페이지로 이동
-        navigate('/results')
-        setInputValue('')
-        return
-      }
-
-      // 직무 모드: 별칭 매핑 처리
-      // 매핑 타입 결정
-      const mappingType =
-        selectedCategory === 'departments'
-          ? 'department'
-          : selectedCategory === 'industries'
-          ? 'industry'
-          : 'job'
-
-      // API를 통한 매핑 처리
-      const mapping = await mapAlias(userInput, mappingType)
-      console.log('매핑 결과 (전체):', mapping)
-      console.log('매핑 타입 체크:', {
-        isObject: typeof mapping === 'object',
-        hasInput: 'input' in mapping,
-        hasStandard: 'standard' in mapping,
-        hasConfidence: 'confidence' in mapping,
-        confidence: mapping?.confidence,
-        confidenceType: typeof mapping?.confidence
-      })
-
-      // 시스템 응답 추가
-      let systemMessage = ''
-      let finalMapping = mapping
+  const handleSubmit = () => {
+    if (mode === 'keyword') {
+      if (!inputValue.trim()) return
       
-      if (mapping.confidence >= 0.8) {
-        systemMessage = `"${mapping.standard}"(표준)로 매핑되었습니다.\n입력: ${mapping.input}`
-      } else {
-        // candidates가 없으면 표준 코드 목록을 사용
-        const candidates = mapping.candidates && mapping.candidates.length > 0
-          ? mapping.candidates
-          : standardCodesList.length > 0
-          ? standardCodesList.slice(0, 5) // 최대 5개만 표시
-          : []
-        
-        // mapping 객체에 candidates 추가 (버튼 표시를 위해)
-        finalMapping = {
-          ...mapping,
-          candidates: candidates.length > 0 ? candidates : mapping.candidates,
-        }
-        
-        if (candidates.length > 0) {
-          systemMessage = `${candidates.map((c, i) => `${i + 1}. ${c}`).join('\n')}`
-        } else {
-          systemMessage = `입력하신 "${userInput}"에 대한 표준 매핑을 찾을 수 없습니다.\n표준 코드를 선택하거나 다른 키워드를 입력해주세요.`
-        }
+      const extractedKeyword = extractKeyword(inputValue.trim())
+      const newFilters: any = {
+        keyword: extractedKeyword
       }
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: 'system',
-          content: systemMessage,
-          mapping: finalMapping,
-          mappingType, // 매핑 타입도 저장
-        },
-      ])
-
-      // 필터 설정 및 결과 페이지로 이동
-      if (mapping.confidence >= 0.8) {
-        const newFilters: any = {}
-        if (mappingType === 'department') {
-          newFilters.department = mapping.standard
-        } else if (mappingType === 'industry') {
-          newFilters.industry = mapping.standard
-        } else {
-          newFilters.jobCategory = mapping.standard
-        }
-
-        setFilters(newFilters)
-        console.log('필터 설정 완료:', newFilters)
-
-        // 필터가 설정된 후 바로 이동 (setTimeout 제거)
-        navigate('/results')
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '매핑 처리 중 오류가 발생했습니다.'
-      setMappingError(errorMessage)
-      setMessages((prev) => [
-        ...prev,
-        {
-          type: 'system',
-          content: `오류: ${errorMessage}`,
-        },
-      ])
+      
+      setFilters(newFilters)
+      navigate('/results')
+      setInputValue('')
+      return
     }
 
-    setInputValue('')
-  }
-
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSubmit()
+    // 직무 모드: 계층구조 선택 기반 검색
+    if (!selectedMajor) {
+      alert('대분류를 선택해주세요.')
+      return
     }
+
+    const newFilters: any = {
+      industry: selectedMajor, // major_category_name
+    }
+
+    // 중분류 선택
+    if (selectedMiddle) {
+      newFilters.middle = selectedMiddle
+    }
+
+    // 소분류 선택
+    if (selectedSmall) {
+      newFilters.small = selectedSmall
+    }
+
+    // 세분류 선택 (jobCategory로 사용)
+    if (selectedSub) {
+      newFilters.jobCategory = selectedSub // sub_category_name
+    } else if (selectedSmall) {
+      // 소분류만 선택된 경우, 해당 소분류에 속한 세분류를 모두 검색
+      // jobCategory는 사용하지 않고 small만 사용
+      newFilters.jobCategory = undefined
+    } else if (selectedMiddle) {
+      // 중분류만 선택된 경우, 해당 중분류에 속한 모든 항목 검색
+      newFilters.jobCategory = undefined
+    }
+
+    setFilters(newFilters)
+    console.log('필터 설정 완료:', newFilters)
+    navigate('/results')
   }
 
-  const handleDropdownSelect = (value: string) => {
-    setInputValue(value)
-    setShowDropdown(false)
-    handleSubmit()
+  const handleReset = () => {
+    setSelectedMajor('')
+    setSelectedMiddle('')
+    setSelectedSmall('')
+    setSelectedSub('')
   }
 
   return (
@@ -257,216 +191,169 @@ export default function SearchInputPage() {
           {mode === 'job' ? '직무로 찾기' : '키워드로 찾기'}
         </h2>
 
-        {/* 입력 방식 선택 */}
-        <div className="flex space-x-4 mb-6">
-          <button
-            onClick={() => setInputType('free')}
-            className={`px-4 py-2 rounded-md transition ${
-              inputType === 'free'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            자유 입력
-          </button>
-          <button
-            onClick={() => setInputType('dropdown')}
-            className={`px-4 py-2 rounded-md transition ${
-              inputType === 'dropdown'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            드롭다운 선택
-          </button>
-        </div>
-
-        {/* 챗봇 대화 영역 */}
-        <div className="border rounded-lg p-4 h-96 overflow-y-auto mb-4 bg-gray-50">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`mb-4 flex ${
-                msg.type === 'user' ? 'justify-end' : 'justify-start'
-              }`}
-            >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  msg.type === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-800 border'
-                }`}
+        {mode === 'keyword' ? (
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSubmit()
+                  }
+                }}
+                placeholder="키워드를 입력하세요..."
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <button
+                onClick={handleSubmit}
+                className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center space-x-2"
               >
-                <p className="whitespace-pre-line">{msg.content}</p>
-                {msg.mapping && msg.mapping.confidence < 0.8 && (() => {
-                  // candidates가 없으면 표준 코드 목록 사용
-                  // 메시지에 저장된 mappingType 사용, 없으면 현재 selectedCategory 기반으로 결정
-                  const msgMappingType = msg.mappingType || (mode === 'job'
-                    ? selectedCategory === 'departments'
-                      ? 'department'
-                      : selectedCategory === 'industries'
-                      ? 'industry'
-                      : 'job'
-                    : 'department')
-                  
-                  // candidates가 있으면 사용, 없으면 표준 코드 목록 사용
-                  let candidates = msg.mapping.candidates && msg.mapping.candidates.length > 0
-                    ? msg.mapping.candidates
-                    : []
-                  
-                  // candidates가 없고 표준 코드도 로드되지 않았으면 현재 카테고리의 표준 코드 사용
-                  if (candidates.length === 0 && standardCodesList.length > 0) {
-                    candidates = standardCodesList.slice(0, 5)
-                  }
-                  
-                  console.log('후보 표시:', {
-                    candidates,
-                    standardCodesList,
-                    msgMappingType,
-                    mapping: msg.mapping
-                  })
-                  
-                  if (candidates.length === 0) {
-                    return null
-                  }
-                  
-                  return (
-                    <div className="mt-2 space-y-1">
-                      {candidates.map((candidate, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            const newFilters: any = {}
-                            if (mode === 'keyword') {
-                              // 키워드 모드: 키워드 필터만 설정 (부서 필터 제거)
-                              newFilters.keyword = candidate
-                            } else {
-                              // 직무 모드: 매핑 타입에 따라 필터 설정
-                              if (msgMappingType === 'department') {
-                                newFilters.department = candidate
-                              } else if (msgMappingType === 'industry') {
-                                newFilters.industry = candidate
-                              } else {
-                                newFilters.jobCategory = candidate
-                              }
-                            }
-                            setFilters(newFilters)
-                            navigate('/results')
-                          }}
-                          className="block w-full text-left px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded text-sm transition"
-                        >
-                          {candidate}
-                        </button>
-                      ))}
-                    </div>
-                  )
-                })()}
-              </div>
+                <Send className="w-5 h-5" />
+                <span>전송</span>
+              </button>
             </div>
-          ))}
-        </div>
-
-        {/* 에러 메시지 */}
-        {mappingError && (
-          <ErrorMessage
-            message={mappingError}
-            onDismiss={() => setMappingError(null)}
-          />
-        )}
-
-        {/* 입력 영역 */}
-        {inputType === 'free' ? (
-          <div className="flex space-x-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder={
-                mode === 'job'
-                  ? '직무, 산업, 부서를 입력하세요...'
-                  : '키워드를 입력하세요...'
-              }
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-            <button
-              onClick={handleSubmit}
-              className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center space-x-2"
-            >
-              <Send className="w-5 h-5" />
-              <span>전송</span>
-            </button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="relative">
-              <button
-                onClick={() => setShowDropdown(!showDropdown)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md flex justify-between items-center hover:bg-gray-50"
-              >
-                <span className="text-gray-700">
-                  {selectedCategory === 'departments'
-                    ? '부서'
-                    : selectedCategory === 'industries'
-                    ? '산업'
-                    : '직무'}
-                </span>
-                <ChevronDown className="w-5 h-5 text-gray-400" />
-              </button>
-              {showDropdown && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg">
-                  {codesLoading ? (
-                    <div className="px-4 py-2 text-center text-gray-500">
-                      로딩 중...
-                    </div>
-                  ) : codesError ? (
-                    <div className="px-4 py-2 text-center text-red-500">
-                      오류가 발생했습니다.
-                    </div>
-                  ) : (
-                    standardCodesList.map((item) => (
-                      <button
-                        key={item}
-                        onClick={() => handleDropdownSelect(item)}
-                        className="w-full px-4 py-2 text-left hover:bg-blue-50 first:rounded-t-md last:rounded-b-md"
-                      >
-                        {item}
-                      </button>
-                    ))
+          <div className="space-y-6">
+            {/* 4단계 계층구조 선택 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* 대분류 (Major) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  대분류 (Major)
+                </label>
+                <select
+                  value={selectedMajor}
+                  onChange={(e) => setSelectedMajor(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">선택하세요</option>
+                  {majorList.map((major) => (
+                    <option key={major} value={major}>
+                      {major}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 중분류 (Middle) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  중분류 (Middle)
+                </label>
+                <select
+                  value={selectedMiddle}
+                  onChange={(e) => setSelectedMiddle(e.target.value)}
+                  disabled={!selectedMajor}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">선택하세요</option>
+                  {middleList.map((middle) => (
+                    <option key={middle} value={middle}>
+                      {middle}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 소분류 (Small) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  소분류 (Small)
+                </label>
+                <select
+                  value={selectedSmall}
+                  onChange={(e) => setSelectedSmall(e.target.value)}
+                  disabled={!selectedMajor || !selectedMiddle}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">선택하세요</option>
+                  {smallList.map((small) => (
+                    <option key={small} value={small}>
+                      {small}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 세분류 (Sub) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  세분류 (Sub)
+                </label>
+                <select
+                  value={selectedSub}
+                  onChange={(e) => setSelectedSub(e.target.value)}
+                  disabled={!selectedMajor || !selectedMiddle || !selectedSmall}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">선택하세요</option>
+                  {subList.map((sub) => (
+                    <option key={sub} value={sub}>
+                      {sub}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 선택된 계층구조 표시 */}
+            {(selectedMajor || selectedMiddle || selectedSmall || selectedSub) && (
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <p className="text-sm text-gray-700 mb-2">
+                  <span className="font-semibold">선택된 계층구조:</span>
+                </p>
+                <div className="flex items-center space-x-2 text-sm">
+                  {selectedMajor && (
+                    <span className="px-2 py-1 bg-blue-600 text-white rounded">
+                      {selectedMajor}
+                    </span>
+                  )}
+                  {selectedMiddle && (
+                    <>
+                      <span className="text-gray-400">→</span>
+                      <span className="px-2 py-1 bg-blue-500 text-white rounded">
+                        {selectedMiddle}
+                      </span>
+                    </>
+                  )}
+                  {selectedSmall && (
+                    <>
+                      <span className="text-gray-400">→</span>
+                      <span className="px-2 py-1 bg-blue-400 text-white rounded">
+                        {selectedSmall}
+                      </span>
+                    </>
+                  )}
+                  {selectedSub && (
+                    <>
+                      <span className="text-gray-400">→</span>
+                      <span className="px-2 py-1 bg-blue-300 text-white rounded">
+                        {selectedSub}
+                      </span>
+                    </>
                   )}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* 버튼 */}
             <div className="flex space-x-2">
               <button
-                onClick={() => setSelectedCategory('departments')}
-                className={`px-4 py-2 rounded-md text-sm ${
-                  selectedCategory === 'departments'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
+                onClick={handleSubmit}
+                disabled={!selectedMajor}
+                className="flex-1 px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition flex items-center justify-center space-x-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                부서
+                <Send className="w-5 h-5" />
+                <span>검색</span>
               </button>
               <button
-                onClick={() => setSelectedCategory('industries')}
-                className={`px-4 py-2 rounded-md text-sm ${
-                  selectedCategory === 'industries'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
+                onClick={handleReset}
+                className="px-6 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition"
               >
-                산업
-              </button>
-              <button
-                onClick={() => setSelectedCategory('jobs')}
-                className={`px-4 py-2 rounded-md text-sm ${
-                  selectedCategory === 'jobs'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700'
-                }`}
-              >
-                직무
+                초기화
               </button>
             </div>
           </div>
@@ -475,4 +362,3 @@ export default function SearchInputPage() {
     </div>
   )
 }
-

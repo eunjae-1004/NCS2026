@@ -16,6 +16,8 @@ router.get('/', async (req, res) => {
       keyword,
       subCategoryCode,
       smallCategoryCode,
+      middle,
+      small,
       page = '1',
       limit = '20',
     } = req.query
@@ -41,32 +43,11 @@ router.get('/', async (req, res) => {
 
     // 직무군 필터 (sub_category_name으로 검색)
     // 검색 기준: ncs_main.sub_category_name
+    // jobCategory는 sub_category_name과 동일하게 처리
     if (jobCategory) {
-      const trimmedJobCategory = jobCategory.trim()
-      
-      // 빈 문자열이나 공백만 있는 경우 무시
-      if (trimmedJobCategory) {
-        // 여러 단어 검색 지원 (공백으로 구분된 단어들을 모두 포함하는 결과 검색)
-        const jobKeywords = trimmedJobCategory.split(/\s+/).filter(k => k.length > 0)
-        
-        if (jobKeywords.length > 0) {
-          // 각 키워드에 대해 검색 조건 생성
-          const jobConditions = []
-          
-          jobKeywords.forEach((kw, idx) => {
-            const jobParam = `%${kw}%`
-            const currentParamIndex = paramIndex + idx
-            
-            // 검색 대상: sub_category_name (소분류명) - 직무군
-            jobConditions.push(`n.sub_category_name ILIKE $${currentParamIndex}`)
-            params.push(jobParam)
-          })
-          
-          // 모든 키워드가 포함되어야 함 (AND 조건)
-          whereClause += ` AND (${jobConditions.join(' AND ')})`
-          paramIndex += jobKeywords.length
-        }
-      }
+      whereClause += ` AND n.sub_category_name = $${paramIndex}`
+      params.push(jobCategory)
+      paramIndex++
     }
 
     // 직무 제목 필터 (jobTitle이 별도로 제공된 경우)
@@ -85,8 +66,22 @@ router.get('/', async (req, res) => {
     // 산업분야 필터 (major_category_name으로 검색)
     // 검색 기준: ncs_main.major_category_name
     if (industry) {
-      whereClause += ` AND n.major_category_name ILIKE $${paramIndex}`
-      params.push(`%${industry}%`)
+      whereClause += ` AND n.major_category_name = $${paramIndex}`
+      params.push(industry)
+      paramIndex++
+    }
+
+    // 중분류 필터 (middle_category_name으로 검색)
+    if (req.query.middle) {
+      whereClause += ` AND n.middle_category_name = $${paramIndex}`
+      params.push(req.query.middle)
+      paramIndex++
+    }
+
+    // 소분류 필터 (small_category_name으로 검색)
+    if (req.query.small) {
+      whereClause += ` AND n.small_category_name = $${paramIndex}`
+      params.push(req.query.small)
       paramIndex++
     }
 

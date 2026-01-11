@@ -313,10 +313,16 @@ export async function getStandardCodes(
   return []
 }
 
-// 계층구조 목록 조회 (산업분야별 직무군)
+// 4단계 계층구조 목록 조회
 export interface HierarchicalData {
-  industry: string
-  jobCategories: string[]
+  major: string
+  middles: Array<{
+    name: string
+    smalls: Array<{
+      name: string
+      subs: string[]
+    }>
+  }>
 }
 
 export async function getHierarchicalCodes(): Promise<HierarchicalData[]> {
@@ -326,6 +332,23 @@ export async function getHierarchicalCodes(): Promise<HierarchicalData[]> {
   }
 
   const response = await api.getHierarchicalCodes()
+  if (response.success && response.data) {
+    return response.data
+  }
+  return []
+}
+
+// 단계별 카테고리 목록 조회
+export async function getCategoryList(
+  level: 'major' | 'middle' | 'small' | 'sub',
+  parent?: string
+): Promise<string[]> {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    return []
+  }
+
+  const response = await api.getCategoryList(level, parent)
   if (response.success && response.data) {
     return response.data
   }
