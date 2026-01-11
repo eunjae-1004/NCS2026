@@ -21,6 +21,8 @@ export default function SearchInputPage() {
   // 계층구조 데이터 로드
   const {
     data: hierarchicalData = [],
+    loading: hierarchicalLoading,
+    error: hierarchicalError,
     execute: loadHierarchical,
   } = useAsync(() => getHierarchicalCodes(), { immediate: false })
 
@@ -31,6 +33,19 @@ export default function SearchInputPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode])
+
+  // 디버깅: 계층구조 데이터 로드 확인
+  useEffect(() => {
+    if (hierarchicalData.length > 0) {
+      console.log('계층구조 데이터 로드됨:', hierarchicalData.length, '개')
+      console.log('첫 번째 항목:', hierarchicalData[0])
+    } else if (!hierarchicalLoading && !hierarchicalError) {
+      console.log('계층구조 데이터가 비어있습니다.')
+    }
+    if (hierarchicalError) {
+      console.error('계층구조 데이터 로드 오류:', hierarchicalError)
+    }
+  }, [hierarchicalData, hierarchicalLoading, hierarchicalError])
 
   // 선택 초기화 함수
   const resetSelection = (level: 'major' | 'middle' | 'small' | 'sub') => {
@@ -277,25 +292,38 @@ export default function SearchInputPage() {
             <div>
               <h4 className="text-sm font-medium text-gray-700 mb-3">
                 {getLevelLabel()} 선택
+                {hierarchicalLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                {currentLevelData.map((item, index) => (
-                  <button
-                    key={`${item.type}-${item.name}-${index}`}
-                    onClick={() => handleItemClick(item.type, item.name)}
-                    className={`px-4 py-2 rounded-md text-sm transition ${
-                      (item.type === 'major' && selectedMajor === item.name) ||
-                      (item.type === 'middle' && selectedMiddle === item.name) ||
-                      (item.type === 'small' && selectedSmall === item.name) ||
-                      (item.type === 'sub' && selectedSub === item.name)
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {item.name}
-                  </button>
-                ))}
-              </div>
+              {hierarchicalError && (
+                <div className="bg-red-50 border border-red-200 rounded-md p-3 mb-4">
+                  <p className="text-sm text-red-700">데이터를 불러오는 중 오류가 발생했습니다.</p>
+                </div>
+              )}
+              {!hierarchicalLoading && !hierarchicalError && currentLevelData.length === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+                  <p className="text-sm text-yellow-700">표시할 데이터가 없습니다.</p>
+                </div>
+              )}
+              {currentLevelData.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {currentLevelData.map((item, index) => (
+                    <button
+                      key={`${item.type}-${item.name}-${index}`}
+                      onClick={() => handleItemClick(item.type, item.name)}
+                      className={`px-4 py-2 rounded-md text-sm transition ${
+                        (item.type === 'major' && selectedMajor === item.name) ||
+                        (item.type === 'middle' && selectedMiddle === item.name) ||
+                        (item.type === 'small' && selectedSmall === item.name) ||
+                        (item.type === 'sub' && selectedSub === item.name)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {item.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* 검색 버튼 */}

@@ -21,6 +21,11 @@ router.get('/hierarchical', async (req, res) => {
       ORDER BY n.id_ncs ASC
     `
     const result = await query(hierarchicalQuery, [])
+    
+    console.log('계층구조 조회 결과:', result.rows.length, '개 행')
+    if (result.rows.length > 0) {
+      console.log('첫 번째 행 예시:', result.rows[0])
+    }
 
     // 4단계 계층구조로 변환 (id_ncs 순서 유지)
     const hierarchical = {}
@@ -77,6 +82,11 @@ router.get('/hierarchical', async (req, res) => {
         middles: middleData,
       }
     })
+
+    console.log('변환된 계층구조 데이터:', data.length, '개 major')
+    if (data.length > 0) {
+      console.log('첫 번째 major 예시:', JSON.stringify(data[0], null, 2))
+    }
 
     res.json({ success: true, data })
   } catch (error) {
