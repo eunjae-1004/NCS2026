@@ -11,7 +11,7 @@ import type { SearchFilters, PaginationMeta } from '../types'
 
 export default function SearchResultsPage() {
   const navigate = useNavigate()
-  const { filters, addToCart, recordSelection, user } = useStore()
+  const { filters, setFilters, addToCart, recordSelection, user } = useStore()
   const [showFilters, setShowFilters] = useState(true)
   const [localFilters, setLocalFilters] = useState<SearchFilters>({
     ...filters,
@@ -72,14 +72,24 @@ export default function SearchResultsPage() {
   useEffect(() => {
     console.log('스토어 filters 변경됨:', filters)
     // filters에 실제 값이 있고, localFilters와 다를 때만 업데이트
-    const hasFilters = Object.keys(filters).length > 0
-    const filtersChanged = JSON.stringify(filters) !== JSON.stringify({
-      ...localFilters,
-      page: localFilters.page,
-      limit: localFilters.limit,
+    const hasFilters = filters && Object.keys(filters).length > 0
+    if (!hasFilters) return
+    
+    // 키워드가 다르거나 다른 필터가 다를 때 업데이트
+    const keywordChanged = filters.keyword !== localFilters.keyword
+    const otherFiltersChanged = JSON.stringify({
+      industry: filters.industry,
+      middle: filters.middle,
+      small: filters.small,
+      jobCategory: filters.jobCategory,
+    }) !== JSON.stringify({
+      industry: localFilters.industry,
+      middle: localFilters.middle,
+      small: localFilters.small,
+      jobCategory: localFilters.jobCategory,
     })
     
-    if (hasFilters && filtersChanged) {
+    if (keywordChanged || otherFiltersChanged) {
       console.log('localFilters 업데이트:', { 기존: localFilters, 새: filters })
       setLocalFilters({
         ...filters,
@@ -231,30 +241,36 @@ export default function SearchResultsPage() {
     else if (newFilters.small !== localFilters.small) {
       newFilters.jobCategory = undefined
     }
-    setLocalFilters({ ...newFilters, page: 1, limit: 20 })
+    const updatedFilters = { ...newFilters, page: 1, limit: 20 }
+    setLocalFilters(updatedFilters)
+    // 키워드 입력 시에도 스토어에 저장 (뒤로가기 시 유지)
+    if (newFilters.keyword !== undefined) {
+      setFilters(updatedFilters)
+    }
   }
 
   // 검색 버튼 클릭 핸들러
   const handleSearch = () => {
     // 키워드가 있으면 핵심 키워드 추출
     const filtersToSearch = { ...localFilters, page: 1 }
+    const originalKeyword = filtersToSearch.keyword
     
     if (filtersToSearch.keyword) {
-      const originalKeyword = filtersToSearch.keyword
-      const extractedKeyword = extractKeyword(originalKeyword)
+      const extractedKeyword = extractKeyword(originalKeyword || '')
       
       // 검색에는 추출된 키워드 사용 (더 정확한 검색을 위해)
       if (extractedKeyword !== originalKeyword) {
         filtersToSearch.keyword = extractedKeyword
         console.log('핵심 키워드 추출:', { 원본: originalKeyword, 추출된키워드: extractedKeyword })
       }
-      
-      // 입력 필드에는 원본 키워드 유지 (사용자가 입력한 전체 텍스트 표시)
-      // localFilters는 업데이트하지 않음 (원본 키워드 유지)
     }
     
     // 페이지는 업데이트 (검색 시 1페이지로 이동)
-    setLocalFilters({ ...localFilters, page: 1 })
+    // 입력 필드에는 원본 키워드 유지 (사용자가 입력한 전체 텍스트 표시)
+    const updatedFilters = { ...localFilters, page: 1 }
+    setLocalFilters(updatedFilters)
+    // 스토어에 원본 키워드 저장 (뒤로가기 시 유지)
+    setFilters(updatedFilters)
     setSearchFilters(filtersToSearch) // 추출된 키워드로 검색 실행
   }
 
