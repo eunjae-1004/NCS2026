@@ -29,22 +29,26 @@ export default function LoginPage() {
 
   // 표준 코드 목록 로드 (회원가입 시에만)
   const {
-    data: industries = [],
+    data: industries,
     loading: industriesLoading,
     execute: loadIndustries,
   } = useAsync(() => getStandardCodes('industries'), { immediate: false })
 
   const {
-    data: departments = [],
+    data: departments,
     loading: departmentsLoading,
     execute: loadDepartments,
   } = useAsync(() => getStandardCodes('departments'), { immediate: false })
 
   const {
-    data: jobs = [],
+    data: jobs,
     loading: jobsLoading,
     execute: loadJobs,
   } = useAsync(() => getStandardCodes('jobs'), { immediate: false })
+  
+  const industriesList = industries || []
+  const departmentsList = departments || []
+  const jobsList = jobs || []
 
   // 회원가입 모드일 때만 표준 코드 로드
   useEffect(() => {
@@ -80,9 +84,9 @@ export default function LoginPage() {
         return item?.code
       }
       
-      const industryCode = getCode(industries || [], selectedIndustry)
-      const departmentCode = getCode(departments || [], selectedDepartment)
-      const jobCode = getCode(jobs || [], selectedJob)
+      const industryCode = getCode(industriesList, selectedIndustry)
+      const departmentCode = getCode(departmentsList, selectedDepartment)
+      const jobCode = getCode(jobsList, selectedJob)
       
       const user = await register(
         email, 
@@ -329,7 +333,7 @@ export default function LoginPage() {
                 disabled={industriesLoading}
               >
                 <option value="">선택 안 함</option>
-                {industries.map((industry) => (
+                {industriesList.map((industry) => (
                   <option key={industry.code} value={industry.name}>
                     {industry.name}
                   </option>
@@ -347,7 +351,7 @@ export default function LoginPage() {
                 disabled={departmentsLoading}
               >
                 <option value="">선택 안 함</option>
-                {departments.map((dept) => (
+                {departmentsList.map((dept) => (
                   <option key={dept.code} value={dept.name}>
                     {dept.name}
                   </option>
@@ -365,7 +369,7 @@ export default function LoginPage() {
                 disabled={jobsLoading}
               >
                 <option value="">선택 안 함</option>
-                {jobs.map((job) => (
+                {jobsList.map((job) => (
                   <option key={job.code} value={job.name}>
                     {job.name}
                   </option>
