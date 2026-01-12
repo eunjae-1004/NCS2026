@@ -49,24 +49,24 @@ router.get('/', async (req, res) => {
     }
 
     // 2. code로 standard_codes에서 이름 조회 (ncs_main 필터링 및 추천 이유 생성용)
-    let industryName = industry
-    let departmentName = department
-    let jobName = job
+    let industryName = industry || null
+    let departmentName = department || null
+    let jobName = job || null
 
     if (industryCode) {
       const nameQuery = `SELECT name FROM standard_codes WHERE code = $1 AND type = 'industries' LIMIT 1`
       const nameResult = await query(nameQuery, [industryCode])
-      industryName = nameResult.rows[0]?.name || industry
+      industryName = nameResult.rows[0]?.name || industry || null
     }
     if (departmentCode) {
       const nameQuery = `SELECT name FROM standard_codes WHERE code = $1 AND type = 'departments' LIMIT 1`
       const nameResult = await query(nameQuery, [departmentCode])
-      departmentName = nameResult.rows[0]?.name || department
+      departmentName = nameResult.rows[0]?.name || department || null
     }
     if (jobCode) {
       const nameQuery = `SELECT name FROM standard_codes WHERE code = $1 AND type = 'jobs' LIMIT 1`
       const nameResult = await query(nameQuery, [jobCode])
-      jobName = nameResult.rows[0]?.name || job
+      jobName = nameResult.rows[0]?.name || job || null
     }
 
     // 3. ncs_main 필터링 조건 구성
