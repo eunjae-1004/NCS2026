@@ -40,12 +40,7 @@ export default function RecommendationPage() {
   }, [])
 
   // 추천 데이터 로드
-  const {
-    data: recommendations,
-    loading,
-    error,
-    execute: executeSearch,
-  } = useAsync(
+  const recommendationsResult = useAsync(
     async () => {
       if (!selectedIndustry && !selectedDepartment) {
         return []
@@ -57,6 +52,11 @@ export default function RecommendationPage() {
     },
     { immediate: false }
   )
+
+  const recommendations = recommendationsResult.data
+  const loading = recommendationsResult.loading
+  const error = recommendationsResult.error
+  const executeSearch = recommendationsResult.execute
 
   // recommendations가 null이거나 undefined인 경우 빈 배열로 처리
   const recommendationsList = Array.isArray(recommendations) ? recommendations : []
