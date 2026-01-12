@@ -29,28 +29,38 @@ export default function SearchResultsPage() {
   // 산업분야 목록 추출 (major에서 추출)
   const industryCodes = (hierarchicalData || []).map((item) => item.major)
 
-  // 선택된 산업분야에 해당하는 직무군 목록 (중복 제거)
-  // 새로운 계층구조에서는 middles -> smalls -> subs 구조이므로
-  // 모든 subs를 평탄화하여 추출
-  const jobCodes = localFilters.industry
+  // 선택된 대분류에 해당하는 중분류 목록
+  const middleCodes = localFilters.industry
     ? (() => {
         const selectedIndustry = (hierarchicalData || []).find((item) => item.major === localFilters.industry)
         if (!selectedIndustry) return []
-        const allSubs: string[] = []
-        selectedIndustry.middles.forEach((middle) => {
-          middle.smalls.forEach((small) => {
-            allSubs.push(...small.subs)
-          })
-        })
-        return Array.from(new Set(allSubs))
+        return selectedIndustry.middles.map((middle) => middle.name)
       })()
-    : Array.from(
-        new Set(
-          (hierarchicalData || []).flatMap((item) =>
-            item.middles.flatMap((middle) => middle.smalls.flatMap((small) => small.subs))
-          )
-        )
-      )
+    : []
+
+  // 선택된 중분류에 해당하는 소분류 목록
+  const smallCodes = localFilters.industry && localFilters.middle
+    ? (() => {
+        const selectedIndustry = (hierarchicalData || []).find((item) => item.major === localFilters.industry)
+        if (!selectedIndustry) return []
+        const selectedMiddle = selectedIndustry.middles.find((m) => m.name === localFilters.middle)
+        if (!selectedMiddle) return []
+        return selectedMiddle.smalls.map((small) => small.name)
+      })()
+    : []
+
+  // 선택된 소분류에 해당하는 세분류 목록
+  const subCodes = localFilters.industry && localFilters.middle && localFilters.small
+    ? (() => {
+        const selectedIndustry = (hierarchicalData || []).find((item) => item.major === localFilters.industry)
+        if (!selectedIndustry) return []
+        const selectedMiddle = selectedIndustry.middles.find((m) => m.name === localFilters.middle)
+        if (!selectedMiddle) return []
+        const selectedSmall = selectedMiddle.smalls.find((s) => s.name === localFilters.small)
+        if (!selectedSmall) return []
+        return selectedSmall.subs
+      })()
+    : []
 
   // 컴포넌트 마운트 시 계층구조 데이터 로드
   useEffect(() => {
@@ -194,8 +204,19 @@ export default function SearchResultsPage() {
 
   // 필터 변경 시 localFilters만 업데이트 (자동 검색 안 함)
   const handleFilterChange = (newFilters: SearchFilters) => {
-    // 산업분야가 변경되면 직무군 필터 초기화
+    // 대분류가 변경되면 하위 필터 모두 초기화
     if (newFilters.industry !== localFilters.industry) {
+      newFilters.middle = undefined
+      newFilters.small = undefined
+      newFilters.jobCategory = undefined
+    }
+    // 중분류가 변경되면 하위 필터 초기화
+    else if (newFilters.middle !== localFilters.middle) {
+      newFilters.small = undefined
+      newFilters.jobCategory = undefined
+    }
+    // 소분류가 변경되면 하위 필터 초기화
+    else if (newFilters.small !== localFilters.small) {
       newFilters.jobCategory = undefined
     }
     setLocalFilters({ ...newFilters, page: 1, limit: 20 })
@@ -210,18 +231,19 @@ export default function SearchResultsPage() {
       const originalKeyword = filtersToSearch.keyword
       const extractedKeyword = extractKeyword(originalKeyword)
       
-      // 추출된 키워드가 원본과 다르면 업데이트
+      // 검색에는 추출된 키워드 사용 (더 정확한 검색을 위해)
       if (extractedKeyword !== originalKeyword) {
         filtersToSearch.keyword = extractedKeyword
         console.log('핵심 키워드 추출:', { 원본: originalKeyword, 추출된키워드: extractedKeyword })
-        
-        // localFilters도 업데이트하여 입력 필드에 추출된 키워드 표시
-        setLocalFilters(filtersToSearch)
       }
+      
+      // 입력 필드에는 원본 키워드 유지 (사용자가 입력한 전체 텍스트 표시)
+      // localFilters는 업데이트하지 않음 (원본 키워드 유지)
     }
     
-    setLocalFilters(filtersToSearch)
-    setSearchFilters(filtersToSearch) // 이렇게 하면 useEffect가 트리거되어 검색 실행됨
+    // 페이지는 업데이트 (검색 시 1페이지로 이동)
+    setLocalFilters({ ...localFilters, page: 1 })
+    setSearchFilters(filtersToSearch) // 추출된 키워드로 검색 실행
   }
 
   // 페이지 변경 핸들러
@@ -334,7 +356,7 @@ export default function SearchResultsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                산업분야
+                대분류
               </label>
               <select
                 value={
@@ -356,29 +378,71 @@ export default function SearchResultsPage() {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                직무군/직무
-              </label>
-              <select
-                value={
-                  localFilters.jobCategory && jobCodes && jobCodes.includes(localFilters.jobCategory)
-                    ? localFilters.jobCategory
-                    : ''
-                }
-                onChange={(e) =>
-                  handleFilterChange({ ...localFilters, jobCategory: e.target.value || undefined })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">전체</option>
-                {jobCodes && jobCodes.length > 0 && jobCodes.map((code: string) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {localFilters.industry && middleCodes.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  중분류
+                </label>
+                <select
+                  value={localFilters.middle || ''}
+                  onChange={(e) =>
+                    handleFilterChange({ ...localFilters, middle: e.target.value || undefined })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">전체</option>
+                  {middleCodes.map((code: string) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {localFilters.middle && smallCodes.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  소분류
+                </label>
+                <select
+                  value={localFilters.small || ''}
+                  onChange={(e) =>
+                    handleFilterChange({ ...localFilters, small: e.target.value || undefined })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">전체</option>
+                  {smallCodes.map((code: string) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {localFilters.small && subCodes.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  세분류
+                </label>
+                <select
+                  value={localFilters.jobCategory || ''}
+                  onChange={(e) =>
+                    handleFilterChange({ ...localFilters, jobCategory: e.target.value || undefined })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">전체</option>
+                  {subCodes.map((code: string) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
