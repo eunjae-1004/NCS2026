@@ -28,7 +28,15 @@ async function fetchApi<T>(
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    const url = `${API_BASE_URL}${endpoint}`
+    console.log('🔍 API 요청:', {
+      method: options?.method || 'GET',
+      url,
+      endpoint,
+      API_BASE_URL,
+    })
+    
+    const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
         ...options?.headers,
