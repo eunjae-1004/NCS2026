@@ -480,10 +480,34 @@ app.get('/api/standard-codes/:type', (req, res) => {
   }
 })
 
+// 등록된 라우트 확인
+app.get('/api/routes', (req, res) => {
+  const routes = []
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      routes.push({
+        path: middleware.route.path,
+        methods: Object.keys(middleware.route.methods),
+      })
+    } else if (middleware.name === 'router') {
+      middleware.handle.stack.forEach((handler) => {
+        if (handler.route) {
+          routes.push({
+            path: handler.route.path,
+            methods: Object.keys(handler.route.methods),
+          })
+        }
+      })
+    }
+  })
+  res.json({ routes })
+})
+
 // 서버 시작
 app.listen(PORT, () => {
   console.log(`🚀 API 서버가 http://localhost:${PORT} 에서 실행 중입니다.`)
   console.log(`📚 API 문서: http://localhost:${PORT}/api`)
+  console.log(`🔍 등록된 라우트 확인: http://localhost:${PORT}/api/routes`)
 })
 
 
