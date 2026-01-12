@@ -11,6 +11,12 @@ const router = express.Router()
 router.get('/', async (req, res) => {
   try {
     let { industry, department, job } = req.query
+    
+    // 빈 문자열을 undefined로 변환
+    if (industry === '' || industry === '전체') industry = undefined
+    if (department === '' || department === '전체') department = undefined
+    if (job === '' || job === '전체') job = undefined
+    
     console.log('추천 API 요청 (원본):', { industry, department, job })
 
     // 필수 파라미터 검증: 산업분야 또는 부서 중 하나는 필수

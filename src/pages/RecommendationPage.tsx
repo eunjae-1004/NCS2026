@@ -42,13 +42,14 @@ export default function RecommendationPage() {
   // 추천 데이터 로드
   const recommendationsResult = useAsync(
     async () => {
-      if (!selectedIndustry && !selectedDepartment) {
+      // 빈 문자열을 undefined로 변환
+      const industry = selectedIndustry && selectedIndustry.trim() ? selectedIndustry.trim() : undefined
+      const department = selectedDepartment && selectedDepartment.trim() ? selectedDepartment.trim() : undefined
+      
+      if (!industry && !department) {
         return []
       }
-      return await getRecommendations(
-        selectedIndustry || undefined,
-        selectedDepartment || undefined
-      )
+      return await getRecommendations(industry, department)
     },
     { immediate: false }
   )
