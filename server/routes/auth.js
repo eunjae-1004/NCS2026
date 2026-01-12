@@ -1,6 +1,7 @@
 import express from 'express'
 import { query } from '../db.js'
 import crypto from 'crypto'
+import { normalizeAliasToCode } from '../utils/aliasMapper.js'
 
 const router = express.Router()
 
@@ -14,15 +15,33 @@ const verifyPassword = (password, hash) => {
   return hashPassword(password) === hash
 }
 
+// 디버깅: 라우트 확인
+router.get('/test', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Auth router is working',
+    timestamp: new Date().toISOString()
+  })
+})
+
 // 회원가입
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, organizationId, industryCode, departmentCode, jobCode } = req.body
+    const { email, password, name, organizationId, industry, department, job } = req.body
 
+    // 필수값 검증
     if (!email || !password || !name) {
       return res.status(400).json({
         success: false,
         error: '이메일, 비밀번호, 이름이 필요합니다.',
+      })
+    }
+
+    // 산업분야, 부서, 직무 필수값 검증
+    if (!industry || !department || !job) {
+      return res.status(400).json({
+        success: false,
+        error: '산업분야, 부서, 직무를 모두 입력해주세요.',
       })
     }
 
@@ -54,6 +73,40 @@ router.post('/register', async (req, res) => {
       })
     }
 
+    // 산업분야, 부서, 직무를 standard_codes로 변환 (없으면 자동 생성)
+    const industryCode = await normalizeAliasToCode(industry.trim(), 'industry')
+    const departmentCode = await normalizeAliasToCode(department.trim(), 'department')
+    const jobCode = await normalizeAliasToCode(job.trim(), 'job')
+
+    console.log('회원가입 - 코드 변환 결과:', { industryCode, departmentCode, jobCode })
+
+    // alias_mapping에 등록 (사용자 입력값을 별칭으로 등록)
+    const registerAlias = async (alias, code, type) => {
+      const aliasType = type === 'industry' ? 'industry' : type === 'department' ? 'department' : 'job'
+      const checkAliasQuery = `
+        SELECT id FROM alias_mapping 
+        WHERE LOWER(alias) = LOWER($1) AND mapping_type = $2
+      `
+      const existingAlias = await query(checkAliasQuery, [alias, aliasType])
+      
+      if (existingAlias.rows.length === 0) {
+        // alias_mapping에 등록 (신뢰도 1.0으로 설정 - 사용자가 직접 입력한 값이므로)
+        const insertAliasQuery = `
+          INSERT INTO alias_mapping (alias, standard_code, mapping_type, confidence)
+          VALUES ($1, $2, $3, 1.0)
+          ON CONFLICT (alias, mapping_type) DO UPDATE
+          SET standard_code = EXCLUDED.standard_code,
+              confidence = EXCLUDED.confidence
+        `
+        await query(insertAliasQuery, [alias.trim(), code, aliasType])
+        console.log(`✅ alias_mapping 등록: "${alias}" -> "${code}" (type: ${aliasType})`)
+      }
+    }
+
+    await registerAlias(industry.trim(), industryCode, 'industry')
+    await registerAlias(department.trim(), departmentCode, 'department')
+    await registerAlias(job.trim(), jobCode, 'job')
+
     // 사용자 ID 생성 (이메일 기반 해시)
     const userId = `user_${crypto.createHash('sha256').update(email).digest('hex').substring(0, 16)}`
     const passwordHash = hashPassword(password)
@@ -71,9 +124,9 @@ router.post('/register', async (req, res) => {
       passwordHash,
       name,
       organizationId || null,
-      industryCode || null,
-      departmentCode || null,
-      jobCode || null,
+      industryCode,
+      departmentCode,
+      jobCode,
     ])
 
     const user = result.rows[0]

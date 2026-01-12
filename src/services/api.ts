@@ -426,14 +426,15 @@ export async function clearCart(
 }
 
 // 회원가입 API
+// 회원가입 (이름 기반)
 export async function register(
   email: string,
   password: string,
   name: string,
   organizationId?: string,
-  industryCode?: string,
-  departmentCode?: string,
-  jobCode?: string
+  industry?: string,
+  department?: string,
+  job?: string
 ): Promise<ApiResponse<User>> {
   return fetchApi<User>('/auth/register', {
     method: 'POST',
@@ -442,9 +443,9 @@ export async function register(
       password, 
       name, 
       organizationId,
-      industryCode,
-      departmentCode,
-      jobCode
+      industry,
+      department,
+      job
     }),
   })
 }

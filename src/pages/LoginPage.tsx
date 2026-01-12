@@ -66,6 +66,12 @@ export default function LoginPage() {
       return
     }
 
+    // 산업분야, 부서, 직무 필수값 검증
+    if (!selectedIndustry || !selectedDepartment || !selectedJob) {
+      setError('산업분야, 부서, 직무를 모두 선택해주세요.')
+      return
+    }
+
     if (password.length < 6) {
       setError('비밀번호는 최소 6자 이상이어야 합니다.')
       return
@@ -77,25 +83,15 @@ export default function LoginPage() {
     try {
       const org = organizations?.find((o) => o.id === selectedOrg)
       
-      // 표준 코드에서 code 추출 (name이 아닌 code 전송)
-      const getCode = (list: Array<{ code: string; name: string }>, selectedName: string) => {
-        if (!selectedName) return undefined
-        const item = list.find(i => i.name === selectedName)
-        return item?.code
-      }
-      
-      const industryCode = getCode(industriesList, selectedIndustry)
-      const departmentCode = getCode(departmentsList, selectedDepartment)
-      const jobCode = getCode(jobsList, selectedJob)
-      
+      // 이름을 직접 전송 (서버에서 standard_codes 자동 생성 및 alias_mapping 등록)
       const user = await register(
         email, 
         password, 
         name, 
         org?.id,
-        industryCode,
-        departmentCode,
-        jobCode
+        selectedIndustry,
+        selectedDepartment,
+        selectedJob
       )
       await setUser(user)
       navigate('/')
@@ -324,7 +320,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                산업분야 (선택사항)
+                산업분야 *
                 {industriesLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
               <select
@@ -332,8 +328,9 @@ export default function LoginPage() {
                 onChange={(e) => setSelectedIndustry(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={industriesLoading}
+                required
               >
-                <option value="">선택 안 함</option>
+                <option value="">선택하세요</option>
                 {industriesList.length > 0 ? (
                   industriesList.map((industry) => (
                     <option key={industry.code} value={industry.name}>
@@ -347,7 +344,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                부서 (선택사항)
+                부서 *
                 {departmentsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
               <select
@@ -355,8 +352,9 @@ export default function LoginPage() {
                 onChange={(e) => setSelectedDepartment(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={departmentsLoading}
+                required
               >
-                <option value="">선택 안 함</option>
+                <option value="">선택하세요</option>
                 {departmentsList.length > 0 ? (
                   departmentsList.map((dept) => (
                     <option key={dept.code} value={dept.name}>
@@ -370,7 +368,7 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                직무 (선택사항)
+                직무 *
                 {jobsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
               <select
@@ -378,8 +376,9 @@ export default function LoginPage() {
                 onChange={(e) => setSelectedJob(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={jobsLoading}
+                required
               >
-                <option value="">선택 안 함</option>
+                <option value="">선택하세요</option>
                 {jobsList.length > 0 ? (
                   jobsList.map((job) => (
                     <option key={job.code} value={job.name}>

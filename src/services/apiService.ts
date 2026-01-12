@@ -636,9 +636,9 @@ export async function register(
   password: string,
   name: string,
   organizationId?: string,
-  industryCode?: string,
-  departmentCode?: string,
-  jobCode?: string
+  industry?: string,
+  department?: string,
+  job?: string
 ): Promise<User> {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 200))
@@ -647,13 +647,13 @@ export async function register(
       email,
       name,
       role: 'user',
-      industryCode,
-      departmentCode,
-      jobCode,
+      industryCode: industry ? `ind_${Date.now()}` : undefined,
+      departmentCode: department ? `dept_${Date.now()}` : undefined,
+      jobCode: job ? `job_${Date.now()}` : undefined,
     }
   }
 
-  const response = await api.register(email, password, name, organizationId, industryCode, departmentCode, jobCode)
+  const response = await api.register(email, password, name, organizationId, industry, department, job)
   if (response.success && response.data) {
     return response.data
   }

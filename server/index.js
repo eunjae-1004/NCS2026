@@ -238,6 +238,16 @@ try {
   app.use('/api/auth', authRouter)
   console.log('  ✅ /api/auth 등록됨')
   console.log('✅ 모든 라우트가 성공적으로 로드되었습니다.')
+  
+  // 디버깅: 등록된 라우트 확인
+  console.log('🔍 등록된 라우트 확인:')
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      console.log(`  - ${Object.keys(middleware.route.methods).join(', ').toUpperCase()} ${middleware.route.path}`)
+    } else if (middleware.name === 'router') {
+      console.log(`  - Router: ${middleware.regexp}`)
+    }
+  })
 } catch (error) {
   console.error('❌ 추가 라우트 로드 실패:', error.message)
   console.error('❌ 에러 상세:', error.stack)
