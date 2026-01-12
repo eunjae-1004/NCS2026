@@ -443,29 +443,6 @@ export default function SearchResultsPage() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                레벨 (숙련도)
-              </label>
-              <select
-                value={localFilters.level || ''}
-                onChange={(e) =>
-                  handleFilterChange({
-                    ...localFilters,
-                    level: e.target.value ? Number(e.target.value) : undefined,
-                  })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">전체</option>
-                <option value="1">1단계</option>
-                <option value="2">2단계</option>
-                <option value="3">3단계</option>
-                <option value="4">4단계</option>
-                <option value="5">5단계</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
                 키워드 검색
               </label>
               <input
