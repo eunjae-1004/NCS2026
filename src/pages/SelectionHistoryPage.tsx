@@ -317,15 +317,11 @@ export default function SelectionHistoryPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">변경 안 함</option>
-                  {industries.map((industry) => {
-                    const code = typeof industry === 'string' ? industry : industry.code
-                    const name = typeof industry === 'string' ? industry : industry.name
-                    return (
-                      <option key={code} value={code}>
-                        {name}
-                      </option>
-                    )
-                  })}
+                  {industriesList.map((industry) => (
+                    <option key={industry.code} value={industry.code}>
+                      {industry.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -343,15 +339,11 @@ export default function SelectionHistoryPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">변경 안 함</option>
-                  {departments.map((dept) => {
-                    const code = typeof dept === 'string' ? dept : dept.code
-                    const name = typeof dept === 'string' ? dept : dept.name
-                    return (
-                      <option key={code} value={code}>
-                        {name}
-                      </option>
-                    )
-                  })}
+                  {departmentsList.map((dept) => (
+                    <option key={dept.code} value={dept.code}>
+                      {dept.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
@@ -369,15 +361,11 @@ export default function SelectionHistoryPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">변경 안 함</option>
-                  {jobs.map((job) => {
-                    const code = typeof job === 'string' ? job : job.code
-                    const name = typeof job === 'string' ? job : job.name
-                    return (
-                      <option key={code} value={code}>
-                        {name}
-                      </option>
-                    )
-                  })}
+                  {jobsList.map((job) => (
+                    <option key={job.code} value={job.code}>
+                      {job.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -488,9 +476,9 @@ export default function SelectionHistoryPage() {
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           >
                             <option value="">선택 안 함</option>
-                            {industries.map((industry) => (
-                              <option key={industry} value={industry}>
-                                {industry}
+                            {industriesList.map((industry) => (
+                              <option key={industry.code} value={industry.code}>
+                                {industry.name}
                               </option>
                             ))}
                           </select>
@@ -513,9 +501,9 @@ export default function SelectionHistoryPage() {
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           >
                             <option value="">선택 안 함</option>
-                            {departments.map((dept) => (
-                              <option key={dept} value={dept}>
-                                {dept}
+                            {departmentsList.map((dept) => (
+                              <option key={dept.code} value={dept.code}>
+                                {dept.name}
                               </option>
                             ))}
                           </select>
@@ -538,9 +526,9 @@ export default function SelectionHistoryPage() {
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                           >
                             <option value="">선택 안 함</option>
-                            {jobs.map((job) => (
-                              <option key={job} value={job}>
-                                {job}
+                            {jobsList.map((job) => (
+                              <option key={job.code} value={job.code}>
+                                {job.name}
                               </option>
                             ))}
                           </select>

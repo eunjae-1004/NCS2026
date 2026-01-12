@@ -15,7 +15,7 @@ export default function RecommendationPage() {
 
   // standard_codes에서 산업분야 목록 가져오기 (NCS 분류와 무관한 실제 산업분야)
   const {
-    data: industries = [],
+    data: industries,
     loading: industriesLoading,
     error: industriesError,
     execute: loadIndustries,
@@ -23,11 +23,14 @@ export default function RecommendationPage() {
 
   // standard_codes에서 부서 목록 가져오기 (NCS 분류와 무관한 실제 부서)
   const {
-    data: departments = [],
+    data: departments,
     loading: departmentsLoading,
     error: departmentsError,
     execute: loadDepartments,
   } = useAsync(() => getStandardCodes('departments'), { immediate: false })
+  
+  const industriesList = industries || []
+  const departmentsList = departments || []
 
   // 컴포넌트 마운트 시 목록 로드
   useEffect(() => {
@@ -158,9 +161,9 @@ export default function RecommendationPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">전체</option>
-              {industries.map((industry) => (
-                <option key={industry} value={industry}>
-                  {industry}
+              {industriesList.map((industry) => (
+                <option key={industry.code} value={industry.name}>
+                  {industry.name}
                 </option>
               ))}
             </select>
@@ -181,9 +184,9 @@ export default function RecommendationPage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">전체</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
+              {departmentsList.map((dept) => (
+                <option key={dept.code} value={dept.name}>
+                  {dept.name}
                 </option>
               ))}
             </select>
