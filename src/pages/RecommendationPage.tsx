@@ -40,21 +40,26 @@ export default function RecommendationPage() {
   }, [])
 
   // 추천 데이터 로드
-  const recommendationsAsync = useAsync(
-    () =>
-      getRecommendations(
+  const {
+    data: recommendations,
+    loading,
+    error,
+    execute: executeSearch,
+  } = useAsync(
+    async () => {
+      if (!selectedIndustry && !selectedDepartment) {
+        return []
+      }
+      return await getRecommendations(
         selectedIndustry || undefined,
         selectedDepartment || undefined
-      ),
+      )
+    },
     { immediate: false }
   )
 
   // recommendations가 null이거나 undefined인 경우 빈 배열로 처리
-  const recommendations = recommendationsAsync.data
-  const loading = recommendationsAsync.loading
-  const error = recommendationsAsync.error
-  const executeSearch = recommendationsAsync.execute
-  const recommendationsList = recommendations || []
+  const recommendationsList = Array.isArray(recommendations) ? recommendations : []
 
   // 디버깅: 추천 데이터 확인
   useEffect(() => {
