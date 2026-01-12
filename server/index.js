@@ -202,18 +202,25 @@ console.log('📦 라우트 모듈 로드 시작...')
 try {
   console.log('  - organizations.js 로드 중...')
   const orgRouter = (await import('./routes/organizations.js')).default
+  if (!orgRouter) throw new Error('organizations.js에서 router를 가져올 수 없습니다.')
   console.log('  - standardCodes.js 로드 중...')
   const stdCodeRouter = (await import('./routes/standardCodes.js')).default
+  if (!stdCodeRouter) throw new Error('standardCodes.js에서 router를 가져올 수 없습니다.')
   console.log('  - alias.js 로드 중...')
   const aliasRouter = (await import('./routes/alias.js')).default
+  if (!aliasRouter) throw new Error('alias.js에서 router를 가져올 수 없습니다.')
   console.log('  - recommendations.js 로드 중...')
   const recommendationsRouter = (await import('./routes/recommendations.js')).default
+  if (!recommendationsRouter) throw new Error('recommendations.js에서 router를 가져올 수 없습니다.')
   console.log('  - cartSets.js 로드 중...')
   const cartSetsRouter = (await import('./routes/cartSets.js')).default
+  if (!cartSetsRouter) throw new Error('cartSets.js에서 router를 가져올 수 없습니다.')
   console.log('  - cart.js 로드 중...')
   const cartRouter = (await import('./routes/cart.js')).default
+  if (!cartRouter) throw new Error('cart.js에서 router를 가져올 수 없습니다.')
   console.log('  - auth.js 로드 중...')
   const authRouter = (await import('./routes/auth.js')).default
+  if (!authRouter) throw new Error('auth.js에서 router를 가져올 수 없습니다.')
   
   console.log('📝 라우트 등록 중...')
   app.use('/api/organizations', orgRouter)
@@ -234,7 +241,8 @@ try {
 } catch (error) {
   console.error('❌ 추가 라우트 로드 실패:', error.message)
   console.error('❌ 에러 상세:', error.stack)
-  // 라우트 로드 실패해도 서버는 계속 실행되도록 함
+  console.error('❌ 서버를 시작할 수 없습니다. 라우트 로드 실패로 인해 종료합니다.')
+  process.exit(1) // 라우트 로드 실패 시 서버 종료
 }
 
 // 기존 Mock 데이터 라우트 (데이터베이스 연결 실패 시 fallback)
