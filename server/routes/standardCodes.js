@@ -210,25 +210,7 @@ router.get('/:type', async (req, res) => {
       })
     }
 
-    // industries, jobs 타입도 standard_codes에서 조회 (추천 검색에서 사용)
-    // code와 name을 함께 반환
-    const selectQuery = `
-      SELECT code, name
-      FROM standard_codes
-      WHERE type = $1
-      ORDER BY code ASC
-    `
-    const result = await query(selectQuery, [type])
-
-    // code와 name을 함께 반환
-    const codes = result.rows.map((row) => ({
-      code: row.code,
-      name: row.name,
-    }))
-
-    res.json({ success: true, data: codes })
-
-    // departments 타입은 기존대로 standard_codes에서 조회
+    // industries, jobs, departments 타입 모두 standard_codes에서 조회
     // code와 name을 함께 반환 (추천 검색 및 선택 이력 관리에서 code 필요)
     const selectQuery = `
       SELECT code, name
@@ -238,7 +220,7 @@ router.get('/:type', async (req, res) => {
     `
     const result = await query(selectQuery, [type])
 
-    // code와 name을 함께 반환 (기존 호환성을 위해 name도 포함)
+    // code와 name을 함께 반환
     const codes = result.rows.map((row) => ({
       code: row.code,
       name: row.name,
