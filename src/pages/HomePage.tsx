@@ -81,6 +81,12 @@ export default function HomePage() {
             선택목록 보기
           </button>
           <button
+            onClick={() => navigate('/history')}
+            className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition text-sm"
+          >
+            선택 이력 관리
+          </button>
+          <button
             onClick={() => navigate('/results')}
             className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition text-sm"
           >

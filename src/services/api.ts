@@ -177,13 +177,72 @@ export async function saveSelectionHistory(
   })
 }
 
-// 사용자별 선택 이력 조회 API
+// 사용자별 선택 이력 조회 API (필터링 지원)
+export interface SelectionHistoryItem {
+  id: number
+  abilityUnitId: string
+  unitCode: string
+  unitName?: string
+  unitLevel?: number
+  industryCode?: string
+  industryName?: string
+  departmentCode?: string
+  departmentName?: string
+  jobCode?: string
+  jobName?: string
+  selectedAt: Date
+  ncsIndustry?: string
+  ncsDepartment?: string
+  ncsJob?: string
+}
+
 export async function getUserSelectionHistory(
-  userId: string
-): Promise<ApiResponse<Array<{ abilityUnitId: string; selectedAt: Date }>>> {
-  return fetchApi<Array<{ abilityUnitId: string; selectedAt: Date }>>(
-    `/history/selections/${userId}`
-  )
+  userId: string,
+  filters?: {
+    industryCode?: string
+    departmentCode?: string
+    jobCode?: string
+  }
+): Promise<ApiResponse<SelectionHistoryItem[]>> {
+  const queryParams = new URLSearchParams()
+  if (filters?.industryCode) queryParams.append('industryCode', filters.industryCode)
+  if (filters?.departmentCode) queryParams.append('departmentCode', filters.departmentCode)
+  if (filters?.jobCode) queryParams.append('jobCode', filters.jobCode)
+  
+  const url = `/history/selections/${userId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`
+  return fetchApi<SelectionHistoryItem[]>(url)
+}
+
+// 선택 이력 수정 API (개별)
+export async function updateSelectionHistory(
+  id: number,
+  userId: string,
+  updates: {
+    industryCode?: string | null
+    departmentCode?: string | null
+    jobCode?: string | null
+  }
+): Promise<ApiResponse<{ id: number; industryCode?: string; departmentCode?: string; jobCode?: string }>> {
+  return fetchApi(`/history/selections/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ userId, ...updates }),
+  })
+}
+
+// 선택 이력 일괄 수정 API (다중/전체)
+export async function bulkUpdateSelectionHistory(
+  userId: string,
+  updates: {
+    ids?: number[]
+    industryCode?: string | null
+    departmentCode?: string | null
+    jobCode?: string | null
+  }
+): Promise<ApiResponse<{ updatedCount: number; updated: any[] }>> {
+  return fetchApi('/history/selections', {
+    method: 'PUT',
+    body: JSON.stringify({ userId, ...updates }),
+  })
 }
 
 // 기관 목록 조회 API
@@ -191,11 +250,16 @@ export async function getOrganizations(): Promise<ApiResponse<Organization[]>> {
   return fetchApi<Organization[]>('/organizations')
 }
 
-// 표준 코드 조회 API
+// 표준 코드 조회 API (code와 name 반환)
+export interface StandardCode {
+  code: string
+  name: string
+}
+
 export async function getStandardCodes(
   type: 'departments' | 'industries' | 'jobs'
-): Promise<ApiResponse<string[]>> {
-  return fetchApi<string[]>(`/standard-codes/${type}`)
+): Promise<ApiResponse<StandardCode[] | string[]>> {
+  return fetchApi<StandardCode[] | string[]>(`/standard-codes/${type}`)
 }
 
 // 4단계 계층구조 목록 조회 API

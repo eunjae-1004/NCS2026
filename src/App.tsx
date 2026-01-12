@@ -8,6 +8,7 @@ import SearchResultsPage from './pages/SearchResultsPage'
 import AbilityDetailPage from './pages/AbilityDetailPage'
 import CartPage from './pages/CartPage'
 import RecommendationPage from './pages/RecommendationPage'
+import SelectionHistoryPage from './pages/SelectionHistoryPage'
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
             <Route path="ability/:id" element={<AbilityDetailPage />} />
             <Route path="cart" element={<CartPage />} />
             <Route path="recommendation" element={<RecommendationPage />} />
+            <Route path="history" element={<SelectionHistoryPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

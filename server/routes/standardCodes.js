@@ -210,55 +210,39 @@ router.get('/:type', async (req, res) => {
       })
     }
 
-    // industries 타입인 경우 ncs_main에서 major_category_name 조회 (id_ncs 오름차순)
-    // 중복 제거하되, id_ncs 순서대로 첫 등장하는 것만 가져옴
-    if (type === 'industries') {
-      const industriesQuery = `
-        SELECT DISTINCT ON (major_category_name) 
-          major_category_name as name
-        FROM ncs_main
-        WHERE major_category_name IS NOT NULL 
-          AND major_category_name != ''
-        ORDER BY major_category_name, id_ncs ASC
-      `
-      const result = await query(industriesQuery, [])
-      // id_ncs 순서대로 정렬 (첫 등장 순서)
-      const codes = result.rows.map((row) => row.name)
-      return res.json({ success: true, data: codes })
-    }
-
-    // jobs 타입인 경우 ncs_main에서 sub_category_name 조회 (id_ncs 오름차순)
-    // 중복 제거하되, id_ncs 순서대로 첫 등장하는 것만 가져옴
-    if (type === 'jobs') {
-      const jobsQuery = `
-        WITH first_occurrence AS (
-          SELECT DISTINCT ON (sub_category_name)
-            sub_category_name as name,
-            id_ncs
-          FROM ncs_main
-          WHERE sub_category_name IS NOT NULL 
-            AND sub_category_name != ''
-          ORDER BY sub_category_name, id_ncs ASC
-        )
-        SELECT name
-        FROM first_occurrence
-        ORDER BY id_ncs ASC
-      `
-      const result = await query(jobsQuery, [])
-      const codes = result.rows.map((row) => row.name)
-      return res.json({ success: true, data: codes })
-    }
-
-    // departments 타입은 기존대로 standard_codes에서 조회
+    // industries, jobs 타입도 standard_codes에서 조회 (추천 검색에서 사용)
+    // code와 name을 함께 반환
     const selectQuery = `
-      SELECT name
+      SELECT code, name
       FROM standard_codes
       WHERE type = $1
       ORDER BY code ASC
     `
     const result = await query(selectQuery, [type])
 
-    const codes = result.rows.map((row) => row.name)
+    // code와 name을 함께 반환
+    const codes = result.rows.map((row) => ({
+      code: row.code,
+      name: row.name,
+    }))
+
+    res.json({ success: true, data: codes })
+
+    // departments 타입은 기존대로 standard_codes에서 조회
+    // code와 name을 함께 반환 (추천 검색 및 선택 이력 관리에서 code 필요)
+    const selectQuery = `
+      SELECT code, name
+      FROM standard_codes
+      WHERE type = $1
+      ORDER BY code ASC
+    `
+    const result = await query(selectQuery, [type])
+
+    // code와 name을 함께 반환 (기존 호환성을 위해 name도 포함)
+    const codes = result.rows.map((row) => ({
+      code: row.code,
+      name: row.name,
+    }))
 
     res.json({ success: true, data: codes })
   } catch (error) {

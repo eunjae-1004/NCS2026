@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardList, TrendingUp } from 'lucide-react'
 import { useStore } from '../store/useStore'
-import { getRecommendations, saveSelectionHistory } from '../services/apiService'
+import { getRecommendations, saveSelectionHistory, getStandardCodes } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
 import Loading from '../components/Loading'
 import ErrorMessage from '../components/ErrorMessage'
@@ -13,8 +13,28 @@ export default function RecommendationPage() {
   const [selectedIndustry, setSelectedIndustry] = useState<string>('')
   const [selectedDepartment, setSelectedDepartment] = useState<string>('')
 
-  const industries = ['제조업', '서비스업', 'IT', '건설업', '금융업']
-  const departments = ['품질관리', '생산관리', '인사관리', '재무관리', '마케팅']
+  // standard_codes에서 산업분야 목록 가져오기 (NCS 분류와 무관한 실제 산업분야)
+  const {
+    data: industries = [],
+    loading: industriesLoading,
+    error: industriesError,
+    execute: loadIndustries,
+  } = useAsync(() => getStandardCodes('industries'), { immediate: false })
+
+  // standard_codes에서 부서 목록 가져오기 (NCS 분류와 무관한 실제 부서)
+  const {
+    data: departments = [],
+    loading: departmentsLoading,
+    error: departmentsError,
+    execute: loadDepartments,
+  } = useAsync(() => getStandardCodes('departments'), { immediate: false })
+
+  // 컴포넌트 마운트 시 목록 로드
+  useEffect(() => {
+    loadIndustries()
+    loadDepartments()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // 추천 데이터 로드
   const {
@@ -129,11 +149,13 @@ export default function RecommendationPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               산업분야
+              {industriesLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
             </label>
             <select
               value={selectedIndustry}
               onChange={(e) => setSelectedIndustry(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              disabled={industriesLoading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">전체</option>
               {industries.map((industry) => (
@@ -142,16 +164,21 @@ export default function RecommendationPage() {
                 </option>
               ))}
             </select>
+            {industriesError && (
+              <p className="text-sm text-red-600 mt-1">산업분야 목록을 불러오는 중 오류가 발생했습니다.</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               부서
+              {departmentsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
             </label>
             <select
               value={selectedDepartment}
               onChange={(e) => setSelectedDepartment(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+              disabled={departmentsLoading}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">전체</option>
               {departments.map((dept) => (
@@ -160,6 +187,9 @@ export default function RecommendationPage() {
                 </option>
               ))}
             </select>
+            {departmentsError && (
+              <p className="text-sm text-red-600 mt-1">부서 목록을 불러오는 중 오류가 발생했습니다.</p>
+            )}
           </div>
         </div>
 

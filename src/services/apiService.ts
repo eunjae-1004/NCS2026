@@ -283,6 +283,73 @@ export async function saveSelectionHistory(
   }
 }
 
+// 선택 이력 조회 (필터링 지원)
+export async function getSelectionHistory(
+  userId: string,
+  filters?: {
+    industryCode?: string
+    departmentCode?: string
+    jobCode?: string
+  }
+): Promise<api.SelectionHistoryItem[]> {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    return []
+  }
+
+  const response = await api.getUserSelectionHistory(userId, filters)
+  if (response.success && response.data) {
+    return response.data.map((item) => ({
+      ...item,
+      selectedAt: new Date(item.selectedAt),
+    }))
+  }
+  return []
+}
+
+// 선택 이력 수정 (개별)
+export async function updateSelectionHistory(
+  id: number,
+  userId: string,
+  updates: {
+    industryCode?: string | null
+    departmentCode?: string | null
+    jobCode?: string | null
+  }
+): Promise<void> {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    return
+  }
+
+  const response = await api.updateSelectionHistory(id, userId, updates)
+  if (!response.success) {
+    throw new Error(response.error || '이력 수정에 실패했습니다.')
+  }
+}
+
+// 선택 이력 일괄 수정 (다중/전체)
+export async function bulkUpdateSelectionHistory(
+  userId: string,
+  updates: {
+    ids?: number[]
+    industryCode?: string | null
+    departmentCode?: string | null
+    jobCode?: string | null
+  }
+): Promise<{ updatedCount: number }> {
+  if (USE_MOCK_DATA) {
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    return { updatedCount: 0 }
+  }
+
+  const response = await api.bulkUpdateSelectionHistory(userId, updates)
+  if (response.success && response.data) {
+    return { updatedCount: response.data.updatedCount }
+  }
+  throw new Error(response.error || '이력 일괄 수정에 실패했습니다.')
+}
+
 // 기관 목록 조회
 export async function getOrganizations(): Promise<Organization[]> {
   if (USE_MOCK_DATA) {

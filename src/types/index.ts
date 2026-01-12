@@ -5,6 +5,9 @@ export interface User {
   name: string
   organization?: string
   role?: 'user' | 'guest' | 'admin'
+  industryCode?: string
+  departmentCode?: string
+  jobCode?: string
 }
 
 // 기관 정보

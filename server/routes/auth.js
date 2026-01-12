@@ -17,7 +17,7 @@ const verifyPassword = (password, hash) => {
 // 회원가입
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, organizationId } = req.body
+    const { email, password, name, organizationId, industryCode, departmentCode, jobCode } = req.body
 
     if (!email || !password || !name) {
       return res.status(400).json({
@@ -60,9 +60,9 @@ router.post('/register', async (req, res) => {
 
     // 사용자 생성
     const insertQuery = `
-      INSERT INTO users (id, email, password_hash, name, organization_id, role, created_at)
-      VALUES ($1, $2, $3, $4, $5, 'user', CURRENT_TIMESTAMP)
-      RETURNING id, email, name, organization_id, role, created_at
+      INSERT INTO users (id, email, password_hash, name, organization_id, role, industry_code, department_code, job_code, created_at)
+      VALUES ($1, $2, $3, $4, $5, 'user', $6, $7, $8, CURRENT_TIMESTAMP)
+      RETURNING id, email, name, organization_id, role, industry_code, department_code, job_code, created_at
     `
 
     const result = await query(insertQuery, [
@@ -71,6 +71,9 @@ router.post('/register', async (req, res) => {
       passwordHash,
       name,
       organizationId || null,
+      industryCode || null,
+      departmentCode || null,
+      jobCode || null,
     ])
 
     const user = result.rows[0]
@@ -83,6 +86,9 @@ router.post('/register', async (req, res) => {
         name: user.name,
         organization: user.organization_id,
         role: user.role,
+        industryCode: user.industry_code,
+        departmentCode: user.department_code,
+        jobCode: user.job_code,
       },
     })
   } catch (error) {
@@ -108,7 +114,7 @@ router.post('/login', async (req, res) => {
 
     // 사용자 조회
     const userQuery = `
-      SELECT id, email, password_hash, name, organization_id, role, created_at
+      SELECT id, email, password_hash, name, organization_id, role, industry_code, department_code, job_code, created_at
       FROM users
       WHERE email = $1
     `
@@ -150,6 +156,9 @@ router.post('/login', async (req, res) => {
         name: user.name,
         organization,
         role: user.role || 'user',
+        industryCode: user.industry_code,
+        departmentCode: user.department_code,
+        jobCode: user.job_code,
       },
     })
   } catch (error) {
