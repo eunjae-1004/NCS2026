@@ -27,22 +27,19 @@ export default function LoginPage() {
     loading: orgsLoading,
   } = useAsync(getOrganizations, { immediate: true })
 
-  // 표준 코드 목록 로드 (회원가입 시에만)
+  // 표준 코드 목록 로드 (회원가입 시에만 - 추천 표시용)
   const {
     data: industries,
-    loading: industriesLoading,
     execute: loadIndustries,
   } = useAsync(() => getStandardCodes('industries'), { immediate: false })
 
   const {
     data: departments,
-    loading: departmentsLoading,
     execute: loadDepartments,
   } = useAsync(() => getStandardCodes('departments'), { immediate: false })
 
   const {
     data: jobs,
-    loading: jobsLoading,
     execute: loadJobs,
   } = useAsync(() => getStandardCodes('jobs'), { immediate: false })
   
