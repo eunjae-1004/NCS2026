@@ -39,18 +39,39 @@ async function fetchApi<T>(
     if (!response.ok) {
       // 에러 응답의 본문을 읽어서 상세한 에러 메시지 가져오기
       let errorMessage = `HTTP error! status: ${response.status}`
+      let errorData: any = null
+      
       try {
-        const errorData = await response.json()
-        if (errorData && errorData.error) {
-          errorMessage = errorData.error
-        } else if (errorData && errorData.message) {
-          errorMessage = errorData.message
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          errorData = await response.json()
+          if (errorData && errorData.error) {
+            errorMessage = errorData.error
+          } else if (errorData && errorData.message) {
+            errorMessage = errorData.message
+          }
+        } else {
+          // JSON이 아닌 경우 텍스트로 읽기
+          const text = await response.text()
+          if (text) {
+            errorMessage = text
+          }
         }
       } catch (e) {
         // JSON 파싱 실패 시 기본 메시지 사용
         console.error('에러 응답 파싱 실패:', e)
       }
-      throw new Error(errorMessage)
+      
+      // 404 오류인 경우 더 자세한 정보 제공
+      if (response.status === 404) {
+        console.error(`404 오류: 요청 URL: ${API_BASE_URL}${endpoint}`)
+        errorMessage = `요청한 리소스를 찾을 수 없습니다. (${response.status})`
+      }
+      
+      return {
+        success: false,
+        error: errorMessage,
+      }
     }
 
     const jsonData = await response.json()
