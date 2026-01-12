@@ -321,74 +321,56 @@ export default function LoginPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 산업분야 *
-                {industriesLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
-              <select
+              <input
+                type="text"
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                disabled={industriesLoading}
+                placeholder="산업분야를 입력하세요 (예: 제조업, IT서비스)"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
-              >
-                <option value="">선택하세요</option>
-                {industriesList.length > 0 ? (
-                  industriesList.map((industry) => (
-                    <option key={industry.code} value={industry.name}>
-                      {industry.name}
-                    </option>
-                  ))
-                ) : (
-                  !industriesLoading && <option value="" disabled>목록을 불러올 수 없습니다</option>
-                )}
-              </select>
+              />
+              {industriesList.length > 0 && (
+                <div className="mt-1 text-xs text-gray-500">
+                  추천: {industriesList.slice(0, 5).map(i => i.name).join(', ')}...
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 부서 *
-                {departmentsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
-              <select
+              <input
+                type="text"
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                disabled={departmentsLoading}
+                placeholder="부서를 입력하세요 (예: 품질관리, 인사팀)"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
-              >
-                <option value="">선택하세요</option>
-                {departmentsList.length > 0 ? (
-                  departmentsList.map((dept) => (
-                    <option key={dept.code} value={dept.name}>
-                      {dept.name}
-                    </option>
-                  ))
-                ) : (
-                  !departmentsLoading && <option value="" disabled>목록을 불러올 수 없습니다</option>
-                )}
-              </select>
+              />
+              {departmentsList.length > 0 && (
+                <div className="mt-1 text-xs text-gray-500">
+                  추천: {departmentsList.slice(0, 5).map(d => d.name).join(', ')}...
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 직무 *
-                {jobsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
-              <select
+              <input
+                type="text"
                 value={selectedJob}
                 onChange={(e) => setSelectedJob(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
-                disabled={jobsLoading}
+                placeholder="직무를 입력하세요 (예: 품질관리사, 개발자)"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
-              >
-                <option value="">선택하세요</option>
-                {jobsList.length > 0 ? (
-                  jobsList.map((job) => (
-                    <option key={job.code} value={job.name}>
-                      {job.name}
-                    </option>
-                  ))
-                ) : (
-                  !jobsLoading && <option value="" disabled>목록을 불러올 수 없습니다</option>
-                )}
-              </select>
+              />
+              {jobsList.length > 0 && (
+                <div className="mt-1 text-xs text-gray-500">
+                  추천: {jobsList.slice(0, 5).map(j => j.name).join(', ')}...
+                </div>
+              )}
             </div>
             <button
               onClick={handleRegister}
