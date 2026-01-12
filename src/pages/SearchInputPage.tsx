@@ -46,23 +46,22 @@ export default function SearchInputPage() {
     }
   }, [hierarchicalData, hierarchicalLoading, hierarchicalError])
 
-  // 선택 초기화 함수
+  // 선택 초기화 함수 (하위 레벨만 초기화)
   const resetSelection = (level: 'major' | 'middle' | 'small' | 'sub') => {
     if (level === 'major') {
-      setSelectedMajor('')
+      // 대분류 선택 시 하위 레벨만 초기화 (대분류는 유지)
       setSelectedMiddle('')
       setSelectedSmall('')
       setSelectedSub('')
     } else if (level === 'middle') {
-      setSelectedMiddle('')
+      // 중분류 선택 시 하위 레벨만 초기화
       setSelectedSmall('')
       setSelectedSub('')
     } else if (level === 'small') {
-      setSelectedSmall('')
-      setSelectedSub('')
-    } else if (level === 'sub') {
+      // 소분류 선택 시 하위 레벨만 초기화
       setSelectedSub('')
     }
+    // sub 레벨은 하위가 없으므로 초기화할 것이 없음
   }
 
   // 키워드 모드 처리
@@ -222,17 +221,22 @@ export default function SearchInputPage() {
   }
 
   const handleItemClick = (type: 'major' | 'middle' | 'small' | 'sub', name: string) => {
+    console.log('버튼 클릭:', type, name)
     if (type === 'major') {
-      setSelectedMajor(name)
-      resetSelection('major')
+      console.log('대분류 선택:', name)
+      resetSelection('major') // 하위 레벨 초기화
+      setSelectedMajor(name) // 대분류 선택
     } else if (type === 'middle') {
-      setSelectedMiddle(name)
-      resetSelection('middle')
+      console.log('중분류 선택:', name)
+      resetSelection('middle') // 하위 레벨 초기화
+      setSelectedMiddle(name) // 중분류 선택
     } else if (type === 'small') {
-      setSelectedSmall(name)
-      resetSelection('small')
+      console.log('소분류 선택:', name)
+      resetSelection('small') // 하위 레벨 초기화
+      setSelectedSmall(name) // 소분류 선택
     } else if (type === 'sub') {
-      setSelectedSub(name)
+      console.log('세분류 선택:', name)
+      setSelectedSub(name) // 세분류 선택
     }
   }
 
