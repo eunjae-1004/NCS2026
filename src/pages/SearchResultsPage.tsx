@@ -136,7 +136,19 @@ export default function SearchResultsPage() {
 
   // 초기 마운트 시 검색 실행 (한 번만)
   useEffect(() => {
-    if (Object.keys(localFilters).length > 0) {
+    // 스토어의 filters가 있으면 localFilters 업데이트
+    if (filters && Object.keys(filters).length > 0) {
+      setLocalFilters({
+        ...filters,
+        page: localFilters.page || 1,
+        limit: localFilters.limit || 20,
+      })
+      setSearchFilters({
+        ...filters,
+        page: 1,
+        limit: 20,
+      })
+    } else if (Object.keys(localFilters).length > 0) {
       setSearchFilters(localFilters)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

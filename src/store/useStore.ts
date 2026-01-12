@@ -71,6 +71,32 @@ const saveUserToStorage = (user: User | null) => {
   }
 }
 
+// localStorage에서 검색 필터 불러오기
+const loadFiltersFromStorage = (): SearchFilters => {
+  try {
+    const stored = localStorage.getItem('ncs_filters')
+    if (stored) {
+      return JSON.parse(stored)
+    }
+  } catch (error) {
+    console.error('검색 필터 로드 실패:', error)
+  }
+  return {}
+}
+
+// 검색 필터를 localStorage에 저장
+const saveFiltersToStorage = (filters: SearchFilters) => {
+  try {
+    if (filters && Object.keys(filters).length > 0) {
+      localStorage.setItem('ncs_filters', JSON.stringify(filters))
+    } else {
+      localStorage.removeItem('ncs_filters')
+    }
+  } catch (error) {
+    console.error('검색 필터 저장 실패:', error)
+  }
+}
+
 export const useStore = create<AppState>((set) => ({
   // 사용자 정보 (초기값은 localStorage에서 불러오기)
   user: loadUserFromStorage(),
@@ -91,9 +117,12 @@ export const useStore = create<AppState>((set) => ({
     }
   },
 
-  // 검색 필터
-  filters: {},
-  setFilters: (filters) => set({ filters }),
+  // 검색 필터 (초기값은 localStorage에서 불러오기)
+  filters: loadFiltersFromStorage(),
+  setFilters: (filters) => {
+    set({ filters })
+    saveFiltersToStorage(filters)
+  },
 
   // 선택목록
   cart: [],
