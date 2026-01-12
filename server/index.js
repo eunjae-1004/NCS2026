@@ -198,21 +198,38 @@ app.use('/api/ability-units', abilityUnitsRouter)
 app.use('/api/history', historyRouter)
 
 // 기관, 표준코드, 별칭, 추천, 세트, 장바구니, 인증 라우트도 추가
+console.log('📦 라우트 모듈 로드 시작...')
 try {
+  console.log('  - organizations.js 로드 중...')
   const orgRouter = (await import('./routes/organizations.js')).default
+  console.log('  - standardCodes.js 로드 중...')
   const stdCodeRouter = (await import('./routes/standardCodes.js')).default
+  console.log('  - alias.js 로드 중...')
   const aliasRouter = (await import('./routes/alias.js')).default
+  console.log('  - recommendations.js 로드 중...')
   const recommendationsRouter = (await import('./routes/recommendations.js')).default
+  console.log('  - cartSets.js 로드 중...')
   const cartSetsRouter = (await import('./routes/cartSets.js')).default
+  console.log('  - cart.js 로드 중...')
   const cartRouter = (await import('./routes/cart.js')).default
+  console.log('  - auth.js 로드 중...')
   const authRouter = (await import('./routes/auth.js')).default
+  
+  console.log('📝 라우트 등록 중...')
   app.use('/api/organizations', orgRouter)
+  console.log('  ✅ /api/organizations 등록됨')
   app.use('/api/standard-codes', stdCodeRouter)
+  console.log('  ✅ /api/standard-codes 등록됨')
   app.use('/api/alias', aliasRouter)
+  console.log('  ✅ /api/alias 등록됨')
   app.use('/api/recommendations', recommendationsRouter)
+  console.log('  ✅ /api/recommendations 등록됨')
   app.use('/api/cart-sets', cartSetsRouter)
+  console.log('  ✅ /api/cart-sets 등록됨')
   app.use('/api/cart', cartRouter)
+  console.log('  ✅ /api/cart 등록됨')
   app.use('/api/auth', authRouter)
+  console.log('  ✅ /api/auth 등록됨')
   console.log('✅ 모든 라우트가 성공적으로 로드되었습니다.')
 } catch (error) {
   console.error('❌ 추가 라우트 로드 실패:', error.message)
