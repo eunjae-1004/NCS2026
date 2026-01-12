@@ -356,7 +356,7 @@ export default function SearchInputPage() {
         {/* 메인 컨텐츠 */}
         <div className="w-full bg-white rounded-lg shadow-lg p-6">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            {mode === 'job' ? '직무로 찾기' : '키워드로 찾기'}
+            {mode === 'job' ? 'NCS 분류로 찾기' : '키워드로 찾기'}
           </h2>
 
           {mode === 'keyword' ? (

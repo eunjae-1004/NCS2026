@@ -7,8 +7,8 @@ export default function HomePage() {
   const options = [
     {
       id: 'job',
-      title: '직무로 찾기',
-      description: '직무, 산업, 부서를 입력하여 능력단위를 검색합니다',
+      title: 'NCS 분류로 찾기',
+      description: '대분류, 중분류, 소분류, 세분류를 입력하여 능력단위를 검색합니다',
       icon: Briefcase,
       color: 'bg-blue-500',
       hoverColor: 'hover:bg-blue-600',
