@@ -213,8 +213,11 @@ try {
   app.use('/api/cart-sets', cartSetsRouter)
   app.use('/api/cart', cartRouter)
   app.use('/api/auth', authRouter)
+  console.log('✅ 모든 라우트가 성공적으로 로드되었습니다.')
 } catch (error) {
   console.error('❌ 추가 라우트 로드 실패:', error.message)
+  console.error('❌ 에러 상세:', error.stack)
+  // 라우트 로드 실패해도 서버는 계속 실행되도록 함
 }
 
 // 기존 Mock 데이터 라우트 (데이터베이스 연결 실패 시 fallback)
