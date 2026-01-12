@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore'
-import { getOrganizations } from '../services/apiService'
+import { getOrganizations, getStandardCodes } from '../services/apiService'
 import { register, login, loginAsGuest } from '../services/apiService'
 import { useAsync } from '../hooks/useAsync'
 import Loading from '../components/Loading'
@@ -15,6 +15,9 @@ export default function LoginPage() {
   const [name, setName] = useState('')
   const [selectedOrg, setSelectedOrg] = useState<string>('')
   const [showOrgSelection, setShowOrgSelection] = useState(false)
+  const [selectedIndustry, setSelectedIndustry] = useState<string>('')
+  const [selectedDepartment, setSelectedDepartment] = useState<string>('')
+  const [selectedJob, setSelectedJob] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -23,6 +26,35 @@ export default function LoginPage() {
     data: organizations = [],
     loading: orgsLoading,
   } = useAsync(getOrganizations, { immediate: true })
+
+  // 표준 코드 목록 로드 (회원가입 시에만)
+  const {
+    data: industries = [],
+    loading: industriesLoading,
+    execute: loadIndustries,
+  } = useAsync(() => getStandardCodes('industries'), { immediate: false })
+
+  const {
+    data: departments = [],
+    loading: departmentsLoading,
+    execute: loadDepartments,
+  } = useAsync(() => getStandardCodes('departments'), { immediate: false })
+
+  const {
+    data: jobs = [],
+    loading: jobsLoading,
+    execute: loadJobs,
+  } = useAsync(() => getStandardCodes('jobs'), { immediate: false })
+
+  // 회원가입 모드일 때만 표준 코드 로드
+  useEffect(() => {
+    if (mode === 'register') {
+      loadIndustries()
+      loadDepartments()
+      loadJobs()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode])
 
   const handleRegister = async () => {
     if (!email.trim() || !password.trim() || !name.trim()) {
@@ -40,7 +72,31 @@ export default function LoginPage() {
 
     try {
       const org = organizations?.find((o) => o.id === selectedOrg)
-      const user = await register(email, password, name, org?.id)
+      
+      // 표준 코드에서 code 추출 (name이 아닌 code 전송)
+      const getCode = (list: any[], selectedName: string) => {
+        if (!selectedName) return undefined
+        const item = list.find(i => {
+          const name = typeof i === 'string' ? i : i.name
+          return name === selectedName
+        })
+        if (!item) return undefined
+        return typeof item === 'string' ? item : item.code
+      }
+      
+      const industryCode = getCode(industries, selectedIndustry)
+      const departmentCode = getCode(departments, selectedDepartment)
+      const jobCode = getCode(jobs, selectedJob)
+      
+      const user = await register(
+        email, 
+        password, 
+        name, 
+        org?.id,
+        industryCode,
+        departmentCode,
+        jobCode
+      )
       await setUser(user)
       navigate('/')
     } catch (err) {
@@ -221,6 +277,9 @@ export default function LoginPage() {
               />
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                기관 (선택사항)
+              </label>
               <button
                 type="button"
                 onClick={() => setShowOrgSelection(!showOrgSelection)}
@@ -262,6 +321,72 @@ export default function LoginPage() {
                   )}
                 </div>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                산업분야 (선택사항)
+              </label>
+              <select
+                value={selectedIndustry}
+                onChange={(e) => setSelectedIndustry(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={industriesLoading}
+              >
+                <option value="">선택 안 함</option>
+                {industries.map((industry) => {
+                  const code = typeof industry === 'string' ? industry : industry.code
+                  const name = typeof industry === 'string' ? industry : industry.name
+                  return (
+                    <option key={code} value={name}>
+                      {name}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                부서 (선택사항)
+              </label>
+              <select
+                value={selectedDepartment}
+                onChange={(e) => setSelectedDepartment(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={departmentsLoading}
+              >
+                <option value="">선택 안 함</option>
+                {departments.map((dept) => {
+                  const code = typeof dept === 'string' ? dept : dept.code
+                  const name = typeof dept === 'string' ? dept : dept.name
+                  return (
+                    <option key={code} value={name}>
+                      {name}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                직무 (선택사항)
+              </label>
+              <select
+                value={selectedJob}
+                onChange={(e) => setSelectedJob(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={jobsLoading}
+              >
+                <option value="">선택 안 함</option>
+                {jobs.map((job) => {
+                  const code = typeof job === 'string' ? job : job.code
+                  const name = typeof job === 'string' ? job : job.name
+                  return (
+                    <option key={code} value={name}>
+                      {name}
+                    </option>
+                  )
+                })}
+              </select>
             </div>
             <button
               onClick={handleRegister}

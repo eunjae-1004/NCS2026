@@ -401,11 +401,22 @@ export async function register(
   email: string,
   password: string,
   name: string,
-  organizationId?: string
+  organizationId?: string,
+  industryCode?: string,
+  departmentCode?: string,
+  jobCode?: string
 ): Promise<ApiResponse<User>> {
   return fetchApi<User>('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ email, password, name, organizationId }),
+    body: JSON.stringify({ 
+      email, 
+      password, 
+      name, 
+      organizationId,
+      industryCode,
+      departmentCode,
+      jobCode
+    }),
   })
 }
 

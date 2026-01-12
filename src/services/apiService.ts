@@ -613,7 +613,10 @@ export async function register(
   email: string,
   password: string,
   name: string,
-  organizationId?: string
+  organizationId?: string,
+  industryCode?: string,
+  departmentCode?: string,
+  jobCode?: string
 ): Promise<User> {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 200))
@@ -622,10 +625,13 @@ export async function register(
       email,
       name,
       role: 'user',
+      industryCode,
+      departmentCode,
+      jobCode,
     }
   }
 
-  const response = await api.register(email, password, name, organizationId)
+  const response = await api.register(email, password, name, organizationId, industryCode, departmentCode, jobCode)
   if (response.success && response.data) {
     return response.data
   }
