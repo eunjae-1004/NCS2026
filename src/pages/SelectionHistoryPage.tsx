@@ -31,13 +31,17 @@ export default function SelectionHistoryPage() {
   }>({})
 
   // 표준 코드 목록 로드
-  const { data: industries = [] } = useAsync(() => getStandardCodes('industries'), { immediate: false })
-  const { data: departments = [] } = useAsync(() => getStandardCodes('departments'), { immediate: false })
-  const { data: jobs = [] } = useAsync(() => getStandardCodes('jobs'), { immediate: false })
+  const { data: industries } = useAsync(() => getStandardCodes('industries'), { immediate: false })
+  const { data: departments } = useAsync(() => getStandardCodes('departments'), { immediate: false })
+  const { data: jobs } = useAsync(() => getStandardCodes('jobs'), { immediate: false })
+  
+  const industriesList = industries || []
+  const departmentsList = departments || []
+  const jobsList = jobs || []
 
   // 선택 이력 조회
   const {
-    data: history = [],
+    data: history,
     loading,
     error,
     execute: loadHistory,
@@ -48,6 +52,8 @@ export default function SelectionHistoryPage() {
     },
     { immediate: false }
   )
+  
+  const historyList = history || []
 
   useEffect(() => {
     if (user?.id) {
@@ -94,10 +100,10 @@ export default function SelectionHistoryPage() {
 
   // 전체 선택/해제
   const handleSelectAll = () => {
-    if (selectedIds.size === history.length) {
+    if (selectedIds.size === historyList.length) {
       setSelectedIds(new Set())
     } else {
-      setSelectedIds(new Set(history.map((item) => item.id)))
+      setSelectedIds(new Set(historyList.map((item) => item.id)))
     }
   }
 
@@ -169,7 +175,7 @@ export default function SelectionHistoryPage() {
     <div className="max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">
-          선택 이력 관리 ({history.length}개)
+          선택 이력 관리 ({historyList.length}개)
         </h2>
         <button
           onClick={() => navigate('/cart')}
@@ -198,15 +204,11 @@ export default function SelectionHistoryPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             >
               <option value="">전체</option>
-              {industries.map((industry) => {
-                const code = typeof industry === 'string' ? industry : industry.code
-                const name = typeof industry === 'string' ? industry : industry.name
-                return (
-                  <option key={code} value={code}>
-                    {name}
-                  </option>
-                )
-              })}
+              {industriesList.map((industry) => (
+                <option key={industry.code} value={industry.code}>
+                  {industry.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -221,15 +223,11 @@ export default function SelectionHistoryPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             >
               <option value="">전체</option>
-              {departments.map((dept) => {
-                const code = typeof dept === 'string' ? dept : dept.code
-                const name = typeof dept === 'string' ? dept : dept.name
-                return (
-                  <option key={code} value={code}>
-                    {name}
-                  </option>
-                )
-              })}
+              {departmentsList.map((dept) => (
+                <option key={dept.code} value={dept.code}>
+                  {dept.name}
+                </option>
+              ))}
             </select>
           </div>
           <div>
@@ -244,15 +242,11 @@ export default function SelectionHistoryPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
             >
               <option value="">전체</option>
-              {jobs.map((job) => {
-                const code = typeof job === 'string' ? job : job.code
-                const name = typeof job === 'string' ? job : job.name
-                return (
-                  <option key={code} value={code}>
-                    {name}
-                  </option>
-                )
-              })}
+              {jobsList.map((job) => (
+                <option key={job.code} value={job.code}>
+                  {job.name}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -423,7 +417,7 @@ export default function SelectionHistoryPage() {
                       onClick={handleSelectAll}
                       className="text-gray-600 hover:text-gray-900"
                     >
-                      {selectedIds.size === history.length && history.length > 0 ? (
+                      {selectedIds.size === historyList.length && historyList.length > 0 ? (
                         <CheckSquare className="w-5 h-5" />
                       ) : (
                         <Square className="w-5 h-5" />
@@ -454,14 +448,14 @@ export default function SelectionHistoryPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {history.length === 0 ? (
+                {historyList.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                       선택 이력이 없습니다.
                     </td>
                   </tr>
                 ) : (
-                  history.map((item) => (
+                  historyList.map((item) => (
                     <tr key={item.id} className="hover:bg-gray-50">
                       <td className="px-4 py-3">
                         <button

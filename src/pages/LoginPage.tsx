@@ -74,19 +74,15 @@ export default function LoginPage() {
       const org = organizations?.find((o) => o.id === selectedOrg)
       
       // 표준 코드에서 code 추출 (name이 아닌 code 전송)
-      const getCode = (list: any[], selectedName: string) => {
+      const getCode = (list: Array<{ code: string; name: string }>, selectedName: string) => {
         if (!selectedName) return undefined
-        const item = list.find(i => {
-          const name = typeof i === 'string' ? i : i.name
-          return name === selectedName
-        })
-        if (!item) return undefined
-        return typeof item === 'string' ? item : item.code
+        const item = list.find(i => i.name === selectedName)
+        return item?.code
       }
       
-      const industryCode = getCode(industries, selectedIndustry)
-      const departmentCode = getCode(departments, selectedDepartment)
-      const jobCode = getCode(jobs, selectedJob)
+      const industryCode = getCode(industries || [], selectedIndustry)
+      const departmentCode = getCode(departments || [], selectedDepartment)
+      const jobCode = getCode(jobs || [], selectedJob)
       
       const user = await register(
         email, 
@@ -333,15 +329,11 @@ export default function LoginPage() {
                 disabled={industriesLoading}
               >
                 <option value="">선택 안 함</option>
-                {industries.map((industry) => {
-                  const code = typeof industry === 'string' ? industry : industry.code
-                  const name = typeof industry === 'string' ? industry : industry.name
-                  return (
-                    <option key={code} value={name}>
-                      {name}
-                    </option>
-                  )
-                })}
+                {industries.map((industry) => (
+                  <option key={industry.code} value={industry.name}>
+                    {industry.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -355,15 +347,11 @@ export default function LoginPage() {
                 disabled={departmentsLoading}
               >
                 <option value="">선택 안 함</option>
-                {departments.map((dept) => {
-                  const code = typeof dept === 'string' ? dept : dept.code
-                  const name = typeof dept === 'string' ? dept : dept.name
-                  return (
-                    <option key={code} value={name}>
-                      {name}
-                    </option>
-                  )
-                })}
+                {departments.map((dept) => (
+                  <option key={dept.code} value={dept.name}>
+                    {dept.name}
+                  </option>
+                ))}
               </select>
             </div>
             <div>
@@ -377,15 +365,11 @@ export default function LoginPage() {
                 disabled={jobsLoading}
               >
                 <option value="">선택 안 함</option>
-                {jobs.map((job) => {
-                  const code = typeof job === 'string' ? job : job.code
-                  const name = typeof job === 'string' ? job : job.name
-                  return (
-                    <option key={code} value={name}>
-                      {name}
-                    </option>
-                  )
-                })}
+                {jobs.map((job) => (
+                  <option key={job.code} value={job.name}>
+                    {job.name}
+                  </option>
+                ))}
               </select>
             </div>
             <button

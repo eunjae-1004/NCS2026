@@ -364,18 +364,40 @@ export async function getOrganizations(): Promise<Organization[]> {
   return []
 }
 
-// 표준 코드 조회
+// 표준 코드 조회 (code와 name 반환)
+export interface StandardCode {
+  code: string
+  name: string
+}
+
 export async function getStandardCodes(
   type: 'departments' | 'industries' | 'jobs'
-): Promise<string[]> {
+): Promise<StandardCode[]> {
   if (USE_MOCK_DATA) {
     await new Promise((resolve) => setTimeout(resolve, 100))
-    return mockStandardCodes[type]
+    // Mock 데이터를 {code, name} 형태로 변환
+    return mockStandardCodes[type].map((name, index) => ({
+      code: `${type.substring(0, 3)}_${String(index + 1).padStart(3, '0')}`,
+      name,
+    }))
   }
 
   const response = await api.getStandardCodes(type)
   if (response.success && response.data) {
-    return response.data
+    // 응답이 배열인 경우
+    if (Array.isArray(response.data)) {
+      // 이미 {code, name} 형태인지 확인
+      if (response.data.length > 0 && typeof response.data[0] === 'object' && response.data[0] !== null && 'code' in response.data[0]) {
+        return response.data as StandardCode[]
+      }
+      // name만 있는 경우 (기존 호환성) - string[]인 경우
+      if (typeof response.data[0] === 'string') {
+        return (response.data as string[]).map((name: string, index: number) => ({
+          code: `${type.substring(0, 3)}_${String(index + 1).padStart(3, '0')}`,
+          name,
+        }))
+      }
+    }
   }
   return []
 }
