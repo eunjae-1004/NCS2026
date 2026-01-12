@@ -378,71 +378,68 @@ export default function SearchResultsPage() {
               </select>
             </div>
 
-            {localFilters.industry && middleCodes.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  중분류
-                </label>
-                <select
-                  value={localFilters.middle || ''}
-                  onChange={(e) =>
-                    handleFilterChange({ ...localFilters, middle: e.target.value || undefined })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">전체</option>
-                  {middleCodes.map((code: string) => (
-                    <option key={code} value={code}>
-                      {code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                중분류
+              </label>
+              <select
+                value={localFilters.middle || ''}
+                onChange={(e) =>
+                  handleFilterChange({ ...localFilters, middle: e.target.value || undefined })
+                }
+                disabled={!localFilters.industry || middleCodes.length === 0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">전체</option>
+                {middleCodes.map((code: string) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            {localFilters.middle && smallCodes.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  소분류
-                </label>
-                <select
-                  value={localFilters.small || ''}
-                  onChange={(e) =>
-                    handleFilterChange({ ...localFilters, small: e.target.value || undefined })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">전체</option>
-                  {smallCodes.map((code: string) => (
-                    <option key={code} value={code}>
-                      {code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                소분류
+              </label>
+              <select
+                value={localFilters.small || ''}
+                onChange={(e) =>
+                  handleFilterChange({ ...localFilters, small: e.target.value || undefined })
+                }
+                disabled={!localFilters.middle || smallCodes.length === 0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">전체</option>
+                {smallCodes.map((code: string) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            {localFilters.small && subCodes.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  세분류
-                </label>
-                <select
-                  value={localFilters.jobCategory || ''}
-                  onChange={(e) =>
-                    handleFilterChange({ ...localFilters, jobCategory: e.target.value || undefined })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">전체</option>
-                  {subCodes.map((code: string) => (
-                    <option key={code} value={code}>
-                      {code}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                세분류
+              </label>
+              <select
+                value={localFilters.jobCategory || ''}
+                onChange={(e) =>
+                  handleFilterChange({ ...localFilters, jobCategory: e.target.value || undefined })
+                }
+                disabled={!localFilters.small || subCodes.length === 0}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">전체</option>
+                {subCodes.map((code: string) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
