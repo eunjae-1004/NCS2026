@@ -325,55 +325,70 @@ export default function LoginPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 산업분야 (선택사항)
+                {industriesLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
               <select
                 value={selectedIndustry}
                 onChange={(e) => setSelectedIndustry(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={industriesLoading}
               >
                 <option value="">선택 안 함</option>
-                {industriesList.map((industry) => (
-                  <option key={industry.code} value={industry.name}>
-                    {industry.name}
-                  </option>
-                ))}
+                {industriesList.length > 0 ? (
+                  industriesList.map((industry) => (
+                    <option key={industry.code} value={industry.name}>
+                      {industry.name}
+                    </option>
+                  ))
+                ) : (
+                  !industriesLoading && <option value="" disabled>목록을 불러올 수 없습니다</option>
+                )}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 부서 (선택사항)
+                {departmentsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
               <select
                 value={selectedDepartment}
                 onChange={(e) => setSelectedDepartment(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={departmentsLoading}
               >
                 <option value="">선택 안 함</option>
-                {departmentsList.map((dept) => (
-                  <option key={dept.code} value={dept.name}>
-                    {dept.name}
-                  </option>
-                ))}
+                {departmentsList.length > 0 ? (
+                  departmentsList.map((dept) => (
+                    <option key={dept.code} value={dept.name}>
+                      {dept.name}
+                    </option>
+                  ))
+                ) : (
+                  !departmentsLoading && <option value="" disabled>목록을 불러올 수 없습니다</option>
+                )}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 직무 (선택사항)
+                {jobsLoading && <span className="text-gray-400 ml-2">(로딩 중...)</span>}
               </label>
               <select
                 value={selectedJob}
                 onChange={(e) => setSelectedJob(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
                 disabled={jobsLoading}
               >
                 <option value="">선택 안 함</option>
-                {jobsList.map((job) => (
-                  <option key={job.code} value={job.name}>
-                    {job.name}
-                  </option>
-                ))}
+                {jobsList.length > 0 ? (
+                  jobsList.map((job) => (
+                    <option key={job.code} value={job.name}>
+                      {job.name}
+                    </option>
+                  ))
+                ) : (
+                  !jobsLoading && <option value="" disabled>목록을 불러올 수 없습니다</option>
+                )}
               </select>
             </div>
             <button
