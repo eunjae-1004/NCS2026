@@ -36,13 +36,37 @@ async function fetchApi<T>(
       API_BASE_URL,
     })
     
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        ...options?.headers,
-      },
-      ...options,
-    })
+    let response: Response
+    try {
+      response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          ...options?.headers,
+        },
+        ...options,
+      })
+    } catch (fetchError) {
+      // 네트워크 오류 (Failed to fetch)
+      console.error('❌ 네트워크 오류:', {
+        error: fetchError,
+        message: fetchError instanceof Error ? fetchError.message : 'Unknown error',
+        url,
+        API_BASE_URL,
+      })
+      
+      // 더 자세한 에러 메시지 제공
+      let errorMessage = '네트워크 오류가 발생했습니다.'
+      if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+        errorMessage = `API 서버에 연결할 수 없습니다. (${API_BASE_URL})`
+      } else if (fetchError instanceof Error) {
+        errorMessage = fetchError.message
+      }
+      
+      return {
+        success: false,
+        error: errorMessage,
+      }
+    }
 
     if (!response.ok) {
       // 에러 응답의 본문을 읽어서 상세한 에러 메시지 가져오기
@@ -95,10 +119,22 @@ async function fetchApi<T>(
     console.log('데이터만 있음 - {success, data}로 감싸기')
     return { success: true, data: jsonData as T }
   } catch (error) {
-    console.error('fetchApi 오류:', error)
+    console.error('❌ fetchApi 오류:', {
+      error,
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      endpoint,
+      API_BASE_URL,
+    })
+    
+    let errorMessage = '알 수 없는 오류가 발생했습니다.'
+    if (error instanceof Error) {
+      errorMessage = error.message
+    }
+    
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: errorMessage,
     }
   }
 }

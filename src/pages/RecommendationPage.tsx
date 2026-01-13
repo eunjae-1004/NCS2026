@@ -194,9 +194,12 @@ export default function RecommendationPage() {
               ))}
             </select>
             {industriesError && (
-              <div className="text-sm text-red-600 mt-1">
+              <div className="text-sm text-red-600 mt-1 bg-red-50 p-2 rounded">
                 <p className="font-semibold">산업분야 목록을 불러오는 중 오류가 발생했습니다.</p>
-                <p className="text-xs mt-1">{industriesError.message || '알 수 없는 오류'}</p>
+                <p className="text-xs mt-1 break-words">{industriesError.message || '알 수 없는 오류'}</p>
+                <p className="text-xs mt-1 text-gray-600">
+                  API 서버 연결을 확인하세요. 개발자 도구(F12)의 콘솔에서 자세한 오류를 확인할 수 있습니다.
+                </p>
               </div>
             )}
             {!industriesLoading && !industriesError && industriesList.length === 0 && (
@@ -223,9 +226,12 @@ export default function RecommendationPage() {
               ))}
             </select>
             {departmentsError && (
-              <div className="text-sm text-red-600 mt-1">
+              <div className="text-sm text-red-600 mt-1 bg-red-50 p-2 rounded">
                 <p className="font-semibold">부서 목록을 불러오는 중 오류가 발생했습니다.</p>
-                <p className="text-xs mt-1">{departmentsError.message || '알 수 없는 오류'}</p>
+                <p className="text-xs mt-1 break-words">{departmentsError.message || '알 수 없는 오류'}</p>
+                <p className="text-xs mt-1 text-gray-600">
+                  API 서버 연결을 확인하세요. 개발자 도구(F12)의 콘솔에서 자세한 오류를 확인할 수 있습니다.
+                </p>
               </div>
             )}
             {!departmentsLoading && !departmentsError && departmentsList.length === 0 && (
