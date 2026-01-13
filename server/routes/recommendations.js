@@ -267,10 +267,12 @@ router.get('/', async (req, res) => {
       console.log('[2단계] 1단계 결과가 없어서 ncs_main 기반 검색 수행')
       
       // 통계 뷰를 활용하여 성능 최적화
+      // 주의: 서브쿼리 내부의 파라미터 인덱스는 메인 쿼리의 현재 paramIndex부터 시작해야 함
       let usageStatsSubquery = ''
       let exactMatchSubquery = ''
       const usageStatsParams = []
-      let usageStatsParamIndex = paramIndex
+      // 현재 params 배열의 길이를 기준으로 파라미터 인덱스 시작
+      const step2ParamStartIndex = params.length + 1
       
       if (industryCode && departmentCode) {
         // 산업분야+부서 조합으로 정확히 일치하는 경우 (최우선)
@@ -278,58 +280,55 @@ router.get('/', async (req, res) => {
           SELECT COALESCE(aus.selection_count, 0)
           FROM ability_unit_usage_stats aus
           WHERE aus.unit_code = n.unit_code
-            AND aus.industry_code = $${usageStatsParamIndex}
-            AND aus.department_code = $${usageStatsParamIndex + 1}
+            AND aus.industry_code = $${step2ParamStartIndex}
+            AND aus.department_code = $${step2ParamStartIndex + 1}
           LIMIT 1
         )`
         exactMatchSubquery = `(
           SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
           FROM ability_unit_usage_stats aus
           WHERE aus.unit_code = n.unit_code
-            AND aus.industry_code = $${usageStatsParamIndex}
-            AND aus.department_code = $${usageStatsParamIndex + 1}
+            AND aus.industry_code = $${step2ParamStartIndex}
+            AND aus.department_code = $${step2ParamStartIndex + 1}
         )`
         usageStatsParams.push(industryCode, departmentCode)
-        usageStatsParamIndex += 2
       } else if (industryCode) {
         // 산업분야만 일치하는 경우
         usageStatsSubquery = `(
           SELECT COALESCE(MAX(aus.selection_count), 0)
           FROM ability_unit_usage_stats aus
           WHERE aus.unit_code = n.unit_code
-            AND aus.industry_code = $${usageStatsParamIndex}
+            AND aus.industry_code = $${step2ParamStartIndex}
         )`
         exactMatchSubquery = `(
           SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
           FROM ability_unit_usage_stats aus
           WHERE aus.unit_code = n.unit_code
-            AND aus.industry_code = $${usageStatsParamIndex}
+            AND aus.industry_code = $${step2ParamStartIndex}
         )`
         usageStatsParams.push(industryCode)
-        usageStatsParamIndex++
       } else if (departmentCode) {
         // 부서만 일치하는 경우
         usageStatsSubquery = `(
           SELECT COALESCE(MAX(aus.selection_count), 0)
           FROM ability_unit_usage_stats aus
           WHERE aus.unit_code = n.unit_code
-            AND aus.department_code = $${usageStatsParamIndex}
+            AND aus.department_code = $${step2ParamStartIndex}
         )`
         exactMatchSubquery = `(
           SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
           FROM ability_unit_usage_stats aus
           WHERE aus.unit_code = n.unit_code
-            AND aus.department_code = $${usageStatsParamIndex}
+            AND aus.department_code = $${step2ParamStartIndex}
         )`
         usageStatsParams.push(departmentCode)
-        usageStatsParamIndex++
       } else {
         // code가 없는 경우
         usageStatsSubquery = '0'
         exactMatchSubquery = '0'
       }
 
-      // usageStatsParams를 params에 추가
+      // usageStatsParams를 params에 추가 (서브쿼리에서 사용할 파라미터)
       params.push(...usageStatsParams)
 
       // 2단계 최종 추천 쿼리 (서브쿼리 활용)
