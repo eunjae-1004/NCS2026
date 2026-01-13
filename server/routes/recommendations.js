@@ -377,56 +377,40 @@ router.get('/', async (req, res) => {
       let reason = ''
       let reasonType = 'recommended'
 
-      // 1단계 결과인지 2단계 결과인지 확인 (user_count가 있으면 1단계)
+      // 1단계 결과인지 2단계 결과인지 확인 (user_count가 있으면 1단계 = 인기기반)
       const isStep1Result = row.user_count !== undefined && row.user_count !== null
       
       if (isStep1Result) {
-        // 1단계 결과: selection_history 기반
+        // 1단계 결과: selection_history 기반 = 인기기반
+        // 활용건수(selection_count)를 반드시 출력
         if (industryCode && departmentCode && industryName && departmentName) {
           reason = `${industryName} 산업의 ${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
-          reasonType = 'customized'
+          reasonType = 'popular' // 인기기반
         } else if (industryCode && industryName) {
           reason = `${industryName} 산업에서 ${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
-          reasonType = 'popular'
+          reasonType = 'popular' // 인기기반
         } else if (departmentCode && departmentName) {
           reason = `${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
-          reasonType = 'popular'
+          reasonType = 'popular' // 인기기반
         } else {
           reason = `${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
-          reasonType = 'popular'
+          reasonType = 'popular' // 인기기반
         }
       } else {
-        // 2단계 결과: ncs_main 기반
+        // 2단계 결과: ncs_main 기반 = 매핑기반
+        // selection_count가 있어도 매핑기반이므로 활용건수는 표시하지 않음
         if (industryCode && departmentCode && industryName && departmentName) {
-          // 산업분야+부서 조합
-          if (row.selection_count > 0) {
-            reason = `${industryName} 산업의 ${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
-            reasonType = 'customized'
-          } else {
-            reason = `${industryName} 산업의 ${departmentName} 부서에 적합한 능력단위입니다`
-            reasonType = 'mapping'
-          }
+          reason = `${industryName} 산업의 ${departmentName} 부서에 적합한 능력단위입니다`
+          reasonType = 'mapping' // 매핑기반
         } else if (industryCode && industryName) {
-          // 산업분야만
-          if (row.selection_count > 0) {
-            reason = `${industryName} 산업에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
-            reasonType = 'popular'
-          } else {
-            reason = `${industryName} 산업에 적합한 능력단위입니다`
-            reasonType = 'mapping'
-          }
+          reason = `${industryName} 산업에 적합한 능력단위입니다`
+          reasonType = 'mapping' // 매핑기반
         } else if (departmentCode && departmentName) {
-          // 부서만
-          if (row.selection_count > 0) {
-            reason = `${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
-            reasonType = 'popular'
-          } else {
-            reason = `${departmentName} 부서에 적합한 능력단위입니다`
-            reasonType = 'mapping'
-          }
+          reason = `${departmentName} 부서에 적합한 능력단위입니다`
+          reasonType = 'mapping' // 매핑기반
         } else {
           reason = '추천하는 능력단위입니다'
-          reasonType = 'recommended'
+          reasonType = 'mapping' // 매핑기반
         }
       }
 
@@ -468,7 +452,8 @@ router.get('/', async (req, res) => {
         },
         reason,
         reasonType,
-        selectionCount: row.selection_count,
+        // 인기기반인 경우에만 활용건수 출력 (selection_history 기반)
+        selectionCount: isStep1Result ? (row.selection_count || 0) : null,
       }
     })
 
