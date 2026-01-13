@@ -166,147 +166,267 @@ router.get('/', async (req, res) => {
       }
     }
 
-    // 4. 맞춤형 추천 로직
-    // 추천 우선순위:
-    // 1순위: 산업분야+부서 조합으로 정확히 일치하는 선택 이력이 많은 능력단위
-    // 2순위: 산업분야 또는 부서 중 하나만 일치하는 선택 이력이 많은 능력단위
-    // 3순위: 필터 조건에 맞지만 선택 이력이 없는 능력단위
+    // 4. 1단계: selection_history에서 industry_code, department_code 기준으로 조회
+    let step1Results = []
+    let step1Params = []
+    let step1ParamIndex = 1
 
-    // 통계 뷰를 활용하여 성능 최적화
-    // 서브쿼리를 사용하여 GROUP BY 오류 방지
-    let usageStatsSubquery = ''
-    let exactMatchSubquery = ''
-    const usageStatsParams = []
-    let usageStatsParamIndex = paramIndex
-    
-    if (industryCode && departmentCode) {
-      // 산업분야+부서 조합으로 정확히 일치하는 경우 (최우선)
-      usageStatsSubquery = `(
-        SELECT COALESCE(aus.selection_count, 0)
-        FROM ability_unit_usage_stats aus
-        WHERE aus.unit_code = n.unit_code
-          AND aus.industry_code = $${usageStatsParamIndex}
-          AND aus.department_code = $${usageStatsParamIndex + 1}
-        LIMIT 1
-      )`
-      exactMatchSubquery = `(
-        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
-        FROM ability_unit_usage_stats aus
-        WHERE aus.unit_code = n.unit_code
-          AND aus.industry_code = $${usageStatsParamIndex}
-          AND aus.department_code = $${usageStatsParamIndex + 1}
-      )`
-      usageStatsParams.push(industryCode, departmentCode)
-      usageStatsParamIndex += 2
-    } else if (industryCode) {
-      // 산업분야만 일치하는 경우
-      usageStatsSubquery = `(
-        SELECT COALESCE(MAX(aus.selection_count), 0)
-        FROM ability_unit_usage_stats aus
-        WHERE aus.unit_code = n.unit_code
-          AND aus.industry_code = $${usageStatsParamIndex}
-      )`
-      exactMatchSubquery = `(
-        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
-        FROM ability_unit_usage_stats aus
-        WHERE aus.unit_code = n.unit_code
-          AND aus.industry_code = $${usageStatsParamIndex}
-      )`
-      usageStatsParams.push(industryCode)
-      usageStatsParamIndex++
-    } else if (departmentCode) {
-      // 부서만 일치하는 경우
-      usageStatsSubquery = `(
-        SELECT COALESCE(MAX(aus.selection_count), 0)
-        FROM ability_unit_usage_stats aus
-        WHERE aus.unit_code = n.unit_code
-          AND aus.department_code = $${usageStatsParamIndex}
-      )`
-      exactMatchSubquery = `(
-        SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
-        FROM ability_unit_usage_stats aus
-        WHERE aus.unit_code = n.unit_code
-          AND aus.department_code = $${usageStatsParamIndex}
-      )`
-      usageStatsParams.push(departmentCode)
-      usageStatsParamIndex++
-    } else {
-      // code가 없는 경우
-      usageStatsSubquery = '0'
-      exactMatchSubquery = '0'
+    if (industryCode || departmentCode) {
+      // 1단계 쿼리: selection_history에서 활용빈도와 함께 조회
+      let step1WhereClause = 'WHERE 1=1'
+      
+      if (industryCode && departmentCode) {
+        // 산업분야+부서 조합
+        step1WhereClause += ` AND sh.industry_code = $${step1ParamIndex} AND sh.department_code = $${step1ParamIndex + 1}`
+        step1Params.push(industryCode, departmentCode)
+        step1ParamIndex += 2
+      } else if (industryCode) {
+        // 산업분야만
+        step1WhereClause += ` AND sh.industry_code = $${step1ParamIndex}`
+        step1Params.push(industryCode)
+        step1ParamIndex++
+      } else if (departmentCode) {
+        // 부서만
+        step1WhereClause += ` AND sh.department_code = $${step1ParamIndex}`
+        step1Params.push(departmentCode)
+        step1ParamIndex++
+      }
+
+      const step1Sql = `
+        SELECT 
+          sh.unit_code,
+          COUNT(DISTINCT sh.id) as selection_count,
+          COUNT(DISTINCT sh.user_id) as user_count,
+          MAX(sh.selected_at) as last_selected_at
+        FROM selection_history sh
+        ${step1WhereClause}
+          AND sh.unit_code IS NOT NULL
+        GROUP BY sh.unit_code
+        HAVING COUNT(DISTINCT sh.id) > 0
+        ORDER BY selection_count DESC, user_count DESC, last_selected_at DESC
+        LIMIT 20
+      `
+
+      console.log('[1단계] selection_history 기반 추천 쿼리:', step1Sql)
+      console.log('[1단계] 파라미터:', step1Params)
+
+      const step1Result = await query(step1Sql, step1Params)
+      console.log('[1단계] 결과 개수:', step1Result.rows.length)
+
+      if (step1Result.rows.length > 0) {
+        // 1단계 결과가 있으면 ncs_main과 JOIN하여 상세 정보 가져오기
+        const unitCodes = step1Result.rows.map(row => row.unit_code)
+        const placeholders = unitCodes.map((_, idx) => `$${idx + 1}`).join(', ')
+        
+        const step1DetailSql = `
+          SELECT DISTINCT
+            n.unit_code,
+            n.unit_name,
+            n.unit_level,
+            n.sub_category_code,
+            n.sub_category_name,
+            n.small_category_name,
+            n.middle_category_name,
+            n.major_category_name,
+            ud.unit_definition as definition,
+            sh_stats.selection_count,
+            sh_stats.user_count,
+            sh_stats.last_selected_at
+          FROM ncs_main n
+          LEFT JOIN unit_definition ud ON n.unit_code = ud.unit_code
+          INNER JOIN (
+            SELECT 
+              sh.unit_code,
+              COUNT(DISTINCT sh.id) as selection_count,
+              COUNT(DISTINCT sh.user_id) as user_count,
+              MAX(sh.selected_at) as last_selected_at
+            FROM selection_history sh
+            ${step1WhereClause}
+              AND sh.unit_code IS NOT NULL
+            GROUP BY sh.unit_code
+            HAVING COUNT(DISTINCT sh.id) > 0
+          ) sh_stats ON n.unit_code = sh_stats.unit_code
+          WHERE n.unit_code IN (${placeholders})
+          GROUP BY n.unit_code, n.unit_name, n.unit_level, n.sub_category_code,
+                   n.sub_category_name, n.small_category_name, n.middle_category_name,
+                   n.major_category_name, ud.unit_definition, 
+                   sh_stats.selection_count, sh_stats.user_count, sh_stats.last_selected_at
+          ORDER BY sh_stats.selection_count DESC, sh_stats.user_count DESC, sh_stats.last_selected_at DESC
+        `
+
+        const step1DetailResult = await query(step1DetailSql, [...step1Params, ...unitCodes])
+        step1Results = step1DetailResult.rows
+        console.log('[1단계] 상세 정보 조회 결과 개수:', step1Results.length)
+      }
     }
 
-    // usageStatsParams를 params에 추가
-    params.push(...usageStatsParams)
-
-    // 5. 최종 추천 쿼리 (서브쿼리 활용)
-    const sql = `
-      SELECT DISTINCT
-        n.unit_code,
-        n.unit_name,
-        n.unit_level,
-        n.sub_category_code,
-        n.sub_category_name,
-        n.small_category_name,
-        n.middle_category_name,
-        n.major_category_name,
-        ud.unit_definition as definition,
-        ${usageStatsSubquery} as selection_count,
-        ${exactMatchSubquery} as exact_match_score
-      FROM ncs_main n
-      LEFT JOIN unit_definition ud ON n.unit_code = ud.unit_code
-      ${whereClause}
-      GROUP BY n.unit_code, n.unit_name, n.unit_level, n.sub_category_code,
-               n.sub_category_name, n.small_category_name, n.middle_category_name,
-               n.major_category_name, ud.unit_definition
-      ORDER BY 
-        exact_match_score DESC,
-        selection_count DESC,
-        n.unit_code
-      LIMIT 20
-    `
-
-    console.log('추천 쿼리:', sql)
-    console.log('추천 파라미터:', params)
+    // 5. 2단계: 1단계 결과가 없을 때만 ncs_main 기반 검색 수행
+    let result = []
     
-    const result = await query(sql, params)
-    console.log('추천 결과 개수:', result.rows.length)
+    if (step1Results.length === 0) {
+      console.log('[2단계] 1단계 결과가 없어서 ncs_main 기반 검색 수행')
+      
+      // 통계 뷰를 활용하여 성능 최적화
+      let usageStatsSubquery = ''
+      let exactMatchSubquery = ''
+      const usageStatsParams = []
+      let usageStatsParamIndex = paramIndex
+      
+      if (industryCode && departmentCode) {
+        // 산업분야+부서 조합으로 정확히 일치하는 경우 (최우선)
+        usageStatsSubquery = `(
+          SELECT COALESCE(aus.selection_count, 0)
+          FROM ability_unit_usage_stats aus
+          WHERE aus.unit_code = n.unit_code
+            AND aus.industry_code = $${usageStatsParamIndex}
+            AND aus.department_code = $${usageStatsParamIndex + 1}
+          LIMIT 1
+        )`
+        exactMatchSubquery = `(
+          SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+          FROM ability_unit_usage_stats aus
+          WHERE aus.unit_code = n.unit_code
+            AND aus.industry_code = $${usageStatsParamIndex}
+            AND aus.department_code = $${usageStatsParamIndex + 1}
+        )`
+        usageStatsParams.push(industryCode, departmentCode)
+        usageStatsParamIndex += 2
+      } else if (industryCode) {
+        // 산업분야만 일치하는 경우
+        usageStatsSubquery = `(
+          SELECT COALESCE(MAX(aus.selection_count), 0)
+          FROM ability_unit_usage_stats aus
+          WHERE aus.unit_code = n.unit_code
+            AND aus.industry_code = $${usageStatsParamIndex}
+        )`
+        exactMatchSubquery = `(
+          SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+          FROM ability_unit_usage_stats aus
+          WHERE aus.unit_code = n.unit_code
+            AND aus.industry_code = $${usageStatsParamIndex}
+        )`
+        usageStatsParams.push(industryCode)
+        usageStatsParamIndex++
+      } else if (departmentCode) {
+        // 부서만 일치하는 경우
+        usageStatsSubquery = `(
+          SELECT COALESCE(MAX(aus.selection_count), 0)
+          FROM ability_unit_usage_stats aus
+          WHERE aus.unit_code = n.unit_code
+            AND aus.department_code = $${usageStatsParamIndex}
+        )`
+        exactMatchSubquery = `(
+          SELECT CASE WHEN COUNT(*) > 0 THEN 1 ELSE 0 END
+          FROM ability_unit_usage_stats aus
+          WHERE aus.unit_code = n.unit_code
+            AND aus.department_code = $${usageStatsParamIndex}
+        )`
+        usageStatsParams.push(departmentCode)
+        usageStatsParamIndex++
+      } else {
+        // code가 없는 경우
+        usageStatsSubquery = '0'
+        exactMatchSubquery = '0'
+      }
+
+      // usageStatsParams를 params에 추가
+      params.push(...usageStatsParams)
+
+      // 2단계 최종 추천 쿼리 (서브쿼리 활용)
+      const sql = `
+        SELECT DISTINCT
+          n.unit_code,
+          n.unit_name,
+          n.unit_level,
+          n.sub_category_code,
+          n.sub_category_name,
+          n.small_category_name,
+          n.middle_category_name,
+          n.major_category_name,
+          ud.unit_definition as definition,
+          ${usageStatsSubquery} as selection_count,
+          ${exactMatchSubquery} as exact_match_score
+        FROM ncs_main n
+        LEFT JOIN unit_definition ud ON n.unit_code = ud.unit_code
+        ${whereClause}
+        GROUP BY n.unit_code, n.unit_name, n.unit_level, n.sub_category_code,
+                 n.sub_category_name, n.small_category_name, n.middle_category_name,
+                 n.major_category_name, ud.unit_definition
+        ORDER BY 
+          exact_match_score DESC,
+          selection_count DESC,
+          n.unit_code
+        LIMIT 20
+      `
+
+      console.log('[2단계] 추천 쿼리:', sql)
+      console.log('[2단계] 추천 파라미터:', params)
+      
+      const step2Result = await query(sql, params)
+      result = step2Result.rows
+      console.log('[2단계] 추천 결과 개수:', result.length)
+    } else {
+      // 1단계 결과 사용
+      result = step1Results
+      console.log('[1단계] 결과 사용, 2단계 건너뜀')
+    }
 
     // 6. 결과를 Recommendation 형식으로 변환 (맞춤형 추천 이유 포함)
-    const recommendations = result.rows.map((row, index) => {
+    const recommendations = result.map((row, index) => {
       let reason = ''
       let reasonType = 'recommended'
 
-      if (industryCode && departmentCode && industryName && departmentName) {
-        // 산업분야+부서 조합
-        if (row.selection_count > 0) {
-          reason = `${industryName} 산업의 ${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
+      // 1단계 결과인지 2단계 결과인지 확인 (user_count가 있으면 1단계)
+      const isStep1Result = row.user_count !== undefined && row.user_count !== null
+      
+      if (isStep1Result) {
+        // 1단계 결과: selection_history 기반
+        if (industryCode && departmentCode && industryName && departmentName) {
+          reason = `${industryName} 산업의 ${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
           reasonType = 'customized'
-        } else {
-          reason = `${industryName} 산업의 ${departmentName} 부서에 적합한 능력단위입니다`
-          reasonType = 'mapping'
-        }
-      } else if (industryCode && industryName) {
-        // 산업분야만
-        if (row.selection_count > 0) {
-          reason = `${industryName} 산업에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
+        } else if (industryCode && industryName) {
+          reason = `${industryName} 산업에서 ${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
+          reasonType = 'popular'
+        } else if (departmentCode && departmentName) {
+          reason = `${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
           reasonType = 'popular'
         } else {
-          reason = `${industryName} 산업에 적합한 능력단위입니다`
-          reasonType = 'mapping'
-        }
-      } else if (departmentCode && departmentName) {
-        // 부서만
-        if (row.selection_count > 0) {
-          reason = `${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
+          reason = `${row.selection_count}회 선택된 인기 능력단위입니다 (${row.user_count}명의 사용자가 선택)`
           reasonType = 'popular'
-        } else {
-          reason = `${departmentName} 부서에 적합한 능력단위입니다`
-          reasonType = 'mapping'
         }
       } else {
-        reason = '추천하는 능력단위입니다'
-        reasonType = 'recommended'
+        // 2단계 결과: ncs_main 기반
+        if (industryCode && departmentCode && industryName && departmentName) {
+          // 산업분야+부서 조합
+          if (row.selection_count > 0) {
+            reason = `${industryName} 산업의 ${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
+            reasonType = 'customized'
+          } else {
+            reason = `${industryName} 산업의 ${departmentName} 부서에 적합한 능력단위입니다`
+            reasonType = 'mapping'
+          }
+        } else if (industryCode && industryName) {
+          // 산업분야만
+          if (row.selection_count > 0) {
+            reason = `${industryName} 산업에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
+            reasonType = 'popular'
+          } else {
+            reason = `${industryName} 산업에 적합한 능력단위입니다`
+            reasonType = 'mapping'
+          }
+        } else if (departmentCode && departmentName) {
+          // 부서만
+          if (row.selection_count > 0) {
+            reason = `${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
+            reasonType = 'popular'
+          } else {
+            reason = `${departmentName} 부서에 적합한 능력단위입니다`
+            reasonType = 'mapping'
+          }
+        } else {
+          reason = '추천하는 능력단위입니다'
+          reasonType = 'recommended'
+        }
       }
 
       // 디버깅: 첫 번째 결과만 로그 출력
