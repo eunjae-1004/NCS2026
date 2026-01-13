@@ -34,10 +34,31 @@ export default function RecommendationPage() {
 
   // 컴포넌트 마운트 시 목록 로드
   useEffect(() => {
+    console.log('[RecommendationPage] 컴포넌트 마운트 - 목록 로드 시작')
     loadIndustries()
     loadDepartments()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 산업분야 목록 로드 상태 디버깅
+  useEffect(() => {
+    console.log('[RecommendationPage] 산업분야 상태:', {
+      loading: industriesLoading,
+      error: industriesError?.message,
+      dataCount: industries?.length || 0,
+      data: industries,
+    })
+  }, [industries, industriesLoading, industriesError])
+
+  // 부서 목록 로드 상태 디버깅
+  useEffect(() => {
+    console.log('[RecommendationPage] 부서 상태:', {
+      loading: departmentsLoading,
+      error: departmentsError?.message,
+      dataCount: departments?.length || 0,
+      data: departments,
+    })
+  }, [departments, departmentsLoading, departmentsError])
 
   // 추천 데이터 로드
   const recommendationsResult = useAsync(
@@ -173,7 +194,13 @@ export default function RecommendationPage() {
               ))}
             </select>
             {industriesError && (
-              <p className="text-sm text-red-600 mt-1">산업분야 목록을 불러오는 중 오류가 발생했습니다.</p>
+              <div className="text-sm text-red-600 mt-1">
+                <p className="font-semibold">산업분야 목록을 불러오는 중 오류가 발생했습니다.</p>
+                <p className="text-xs mt-1">{industriesError.message || '알 수 없는 오류'}</p>
+              </div>
+            )}
+            {!industriesLoading && !industriesError && industriesList.length === 0 && (
+              <p className="text-sm text-yellow-600 mt-1">산업분야 목록이 비어있습니다.</p>
             )}
           </div>
 
@@ -196,7 +223,13 @@ export default function RecommendationPage() {
               ))}
             </select>
             {departmentsError && (
-              <p className="text-sm text-red-600 mt-1">부서 목록을 불러오는 중 오류가 발생했습니다.</p>
+              <div className="text-sm text-red-600 mt-1">
+                <p className="font-semibold">부서 목록을 불러오는 중 오류가 발생했습니다.</p>
+                <p className="text-xs mt-1">{departmentsError.message || '알 수 없는 오류'}</p>
+              </div>
+            )}
+            {!departmentsLoading && !departmentsError && departmentsList.length === 0 && (
+              <p className="text-sm text-yellow-600 mt-1">부서 목록이 비어있습니다.</p>
             )}
           </div>
         </div>

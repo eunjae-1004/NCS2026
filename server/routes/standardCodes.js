@@ -202,6 +202,7 @@ router.get('/category/:level', async (req, res) => {
 router.get('/:type', async (req, res) => {
   try {
     const { type } = req.params
+    const startTime = Date.now()
 
     if (!['departments', 'industries', 'jobs'].includes(type)) {
       return res.status(400).json({
@@ -209,6 +210,8 @@ router.get('/:type', async (req, res) => {
         error: '유효하지 않은 타입입니다. (departments, industries, jobs)',
       })
     }
+
+    console.log(`[표준 코드 조회] 타입: ${type}, 시작 시간: ${new Date().toISOString()}`)
 
     // industries, jobs, departments 타입 모두 standard_codes에서 조회
     // code와 name을 함께 반환 (추천 검색 및 선택 이력 관리에서 code 필요)
@@ -218,7 +221,12 @@ router.get('/:type', async (req, res) => {
       WHERE type = $1
       ORDER BY name ASC
     `
+    
+    const queryStartTime = Date.now()
     const result = await query(selectQuery, [type])
+    const queryTime = Date.now() - queryStartTime
+
+    console.log(`[표준 코드 조회] 쿼리 실행 시간: ${queryTime}ms, 결과 개수: ${result.rows.length}`)
 
     // code와 name을 함께 반환
     const codes = result.rows.map((row) => ({
@@ -226,9 +234,16 @@ router.get('/:type', async (req, res) => {
       name: row.name,
     }))
 
+    const totalTime = Date.now() - startTime
+    console.log(`[표준 코드 조회] 총 소요 시간: ${totalTime}ms, 타입: ${type}, 개수: ${codes.length}`)
+
     res.json({ success: true, data: codes })
   } catch (error) {
-    console.error('표준 코드 조회 오류:', error)
+    console.error('[표준 코드 조회 오류]', {
+      type: req.params.type,
+      error: error.message,
+      stack: error.stack,
+    })
     res.status(500).json({
       success: false,
       error: error.message || '표준 코드 조회 중 오류가 발생했습니다.',

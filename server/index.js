@@ -494,26 +494,7 @@ app.get('/api/organizations', (req, res) => {
   }
 })
 
-// 9. 표준 코드 조회
-app.get('/api/standard-codes/:type', (req, res) => {
-  try {
-    const { type } = req.params
-
-    if (!standardCodes[type]) {
-      return res.status(400).json({
-        success: false,
-        error: '유효하지 않은 타입입니다. (departments, industries, jobs)',
-      })
-    }
-
-    res.json({ success: true, data: standardCodes[type] })
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message || '표준 코드 조회 중 오류가 발생했습니다.',
-    })
-  }
-})
+// 9. 표준 코드 조회는 /api/standard-codes 라우터에서 처리됨 (중복 제거)
 
 // 등록된 라우트 확인
 app.get('/api/routes', (req, res) => {

@@ -382,24 +382,48 @@ export async function getStandardCodes(
     }))
   }
 
-  const response = await api.getStandardCodes(type)
-  if (response.success && response.data) {
-    // 응답이 배열인 경우
-    if (Array.isArray(response.data)) {
-      // 이미 {code, name} 형태인지 확인
-      if (response.data.length > 0 && typeof response.data[0] === 'object' && response.data[0] !== null && 'code' in response.data[0]) {
-        return response.data as StandardCode[]
-      }
-      // name만 있는 경우 (기존 호환성) - string[]인 경우
-      if (typeof response.data[0] === 'string') {
-        return (response.data as string[]).map((name: string, index: number) => ({
-          code: `${type.substring(0, 3)}_${String(index + 1).padStart(3, '0')}`,
-          name,
-        }))
+  console.log(`[apiService] getStandardCodes 호출 시작 - type: ${type}`)
+  const startTime = Date.now()
+  
+  try {
+    const response = await api.getStandardCodes(type)
+    const elapsedTime = Date.now() - startTime
+    
+    console.log(`[apiService] getStandardCodes 응답 받음 - type: ${type}, 시간: ${elapsedTime}ms`, {
+      success: response.success,
+      hasData: !!response.data,
+      dataType: Array.isArray(response.data) ? 'array' : typeof response.data,
+      dataLength: Array.isArray(response.data) ? response.data.length : 0,
+      error: response.error,
+    })
+    
+    if (response.success && response.data) {
+      // 응답이 배열인 경우
+      if (Array.isArray(response.data)) {
+        // 이미 {code, name} 형태인지 확인
+        if (response.data.length > 0 && typeof response.data[0] === 'object' && response.data[0] !== null && 'code' in response.data[0]) {
+          console.log(`[apiService] getStandardCodes 성공 - type: ${type}, 개수: ${response.data.length}`)
+          return response.data as StandardCode[]
+        }
+        // name만 있는 경우 (기존 호환성) - string[]인 경우
+        if (typeof response.data[0] === 'string') {
+          const converted = (response.data as string[]).map((name: string, index: number) => ({
+            code: `${type.substring(0, 3)}_${String(index + 1).padStart(3, '0')}`,
+            name,
+          }))
+          console.log(`[apiService] getStandardCodes 변환 완료 - type: ${type}, 개수: ${converted.length}`)
+          return converted
+        }
       }
     }
+    
+    console.warn(`[apiService] getStandardCodes 데이터 없음 - type: ${type}`, response)
+    return []
+  } catch (error) {
+    const elapsedTime = Date.now() - startTime
+    console.error(`[apiService] getStandardCodes 오류 - type: ${type}, 시간: ${elapsedTime}ms`, error)
+    throw error
   }
-  return []
 }
 
 // 4단계 계층구조 목록 조회
