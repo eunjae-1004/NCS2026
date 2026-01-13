@@ -397,11 +397,17 @@ export async function getStandardCodes(
       error: response.error,
     })
     
-    if (response.success && response.data) {
+    if (response.success) {
       // 응답이 배열인 경우
       if (Array.isArray(response.data)) {
+        // 빈 배열인 경우
+        if (response.data.length === 0) {
+          console.warn(`[apiService] getStandardCodes 빈 배열 반환 - type: ${type}`)
+          return []
+        }
+        
         // 이미 {code, name} 형태인지 확인
-        if (response.data.length > 0 && typeof response.data[0] === 'object' && response.data[0] !== null && 'code' in response.data[0]) {
+        if (typeof response.data[0] === 'object' && response.data[0] !== null && 'code' in response.data[0]) {
           console.log(`[apiService] getStandardCodes 성공 - type: ${type}, 개수: ${response.data.length}`)
           return response.data as StandardCode[]
         }
@@ -415,9 +421,21 @@ export async function getStandardCodes(
           return converted
         }
       }
+      
+      // response.data가 null이거나 undefined인 경우
+      if (!response.data) {
+        console.warn(`[apiService] getStandardCodes data가 null/undefined - type: ${type}`, response)
+        return []
+      }
     }
     
-    console.warn(`[apiService] getStandardCodes 데이터 없음 - type: ${type}`, response)
+    // 에러가 있는 경우
+    if (response.error) {
+      console.error(`[apiService] getStandardCodes API 에러 - type: ${type}`, response.error)
+      throw new Error(response.error)
+    }
+    
+    console.warn(`[apiService] getStandardCodes 예상치 못한 응답 - type: ${type}`, response)
     return []
   } catch (error) {
     const elapsedTime = Date.now() - startTime

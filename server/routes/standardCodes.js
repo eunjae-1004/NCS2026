@@ -227,6 +227,13 @@ router.get('/:type', async (req, res) => {
     const queryTime = Date.now() - queryStartTime
 
     console.log(`[표준 코드 조회] 쿼리 실행 시간: ${queryTime}ms, 결과 개수: ${result.rows.length}`)
+    
+    // 결과가 없을 경우 경고
+    if (result.rows.length === 0) {
+      console.warn(`[표준 코드 조회] ⚠️ 데이터 없음 - type: ${type}`)
+      console.warn(`[표준 코드 조회] 데이터베이스에 ${type} 타입의 데이터가 없습니다.`)
+      console.warn(`[표준 코드 조회] populate_standard_codes_from_ncs.sql 또는 populate_24_industries.sql 스크립트를 실행하세요.`)
+    }
 
     // code와 name을 함께 반환
     const codes = result.rows.map((row) => ({
@@ -236,6 +243,10 @@ router.get('/:type', async (req, res) => {
 
     const totalTime = Date.now() - startTime
     console.log(`[표준 코드 조회] 총 소요 시간: ${totalTime}ms, 타입: ${type}, 개수: ${codes.length}`)
+    
+    if (codes.length > 0) {
+      console.log(`[표준 코드 조회] 샘플 데이터 (처음 3개):`, codes.slice(0, 3))
+    }
 
     res.json({ success: true, data: codes })
   } catch (error) {
