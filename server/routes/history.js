@@ -346,6 +346,4 @@ router.put('/selections', async (req, res) => {
       error: error.message || '이력 일괄 수정 중 오류가 발생했습니다.',
     })
   }
-})
-
-export default router
+})export default router

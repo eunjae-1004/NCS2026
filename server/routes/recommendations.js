@@ -273,11 +273,11 @@ router.get('/', async (req, res) => {
     console.log('추천 결과 개수:', result.rows.length)
 
     // 6. 결과를 Recommendation 형식으로 변환 (맞춤형 추천 이유 포함)
-    const recommendations = result.rows.map((row) => {
+    const recommendations = result.rows.map((row, index) => {
       let reason = ''
       let reasonType = 'recommended'
 
-      if (industryCode && departmentCode) {
+      if (industryCode && departmentCode && industryName && departmentName) {
         // 산업분야+부서 조합
         if (row.selection_count > 0) {
           reason = `${industryName} 산업의 ${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
@@ -286,7 +286,7 @@ router.get('/', async (req, res) => {
           reason = `${industryName} 산업의 ${departmentName} 부서에 적합한 능력단위입니다`
           reasonType = 'mapping'
         }
-      } else if (industryCode) {
+      } else if (industryCode && industryName) {
         // 산업분야만
         if (row.selection_count > 0) {
           reason = `${industryName} 산업에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
@@ -295,7 +295,7 @@ router.get('/', async (req, res) => {
           reason = `${industryName} 산업에 적합한 능력단위입니다`
           reasonType = 'mapping'
         }
-      } else if (departmentCode) {
+      } else if (departmentCode && departmentName) {
         // 부서만
         if (row.selection_count > 0) {
           reason = `${departmentName} 부서에서 ${row.selection_count}회 선택된 인기 능력단위입니다`
@@ -310,7 +310,7 @@ router.get('/', async (req, res) => {
       }
 
       // 디버깅: 첫 번째 결과만 로그 출력
-      const isFirst = recommendations.length === 0
+      const isFirst = index === 0
       if (isFirst) {
         console.log('=== 추천 결과 첫 번째 항목 디버깅 ===')
         console.log('DB에서 가져온 원본 데이터:', {
