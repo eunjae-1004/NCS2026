@@ -80,6 +80,14 @@ router.post('/register', async (req, res) => {
 
     console.log('회원가입 - 코드 변환 결과:', { industryCode, departmentCode, jobCode })
 
+    // 코드 변환 실패 확인
+    if (!industryCode || !departmentCode || !jobCode) {
+      return res.status(400).json({
+        success: false,
+        error: '산업분야, 부서, 직무 코드 변환에 실패했습니다. 다시 시도해주세요.',
+      })
+    }
+
     // alias_mapping에 등록 (사용자 입력값을 별칭으로 등록)
     const registerAlias = async (alias, code, type) => {
       const aliasType = type === 'industry' ? 'industry' : type === 'department' ? 'department' : 'job'
@@ -112,6 +120,7 @@ router.post('/register', async (req, res) => {
     const passwordHash = hashPassword(password)
 
     // 사용자 생성
+    // 빈 문자열은 NULL로 변환 (PostgreSQL에서 빈 문자열과 NULL은 다르게 처리됨)
     const insertQuery = `
       INSERT INTO users (id, email, password_hash, name, organization_id, role, industry_code, department_code, job_code, created_at)
       VALUES ($1, $2, $3, $4, $5, 'user', $6, $7, $8, CURRENT_TIMESTAMP)
@@ -124,9 +133,9 @@ router.post('/register', async (req, res) => {
       passwordHash,
       name,
       organizationId || null,
-      industryCode,
-      departmentCode,
-      jobCode,
+      industryCode || null,
+      departmentCode || null,
+      jobCode || null,
     ])
 
     const user = result.rows[0]
@@ -146,6 +155,31 @@ router.post('/register', async (req, res) => {
     })
   } catch (error) {
     console.error('회원가입 오류:', error)
+    console.error('오류 상세:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      stack: error.stack,
+    })
+    
+    // 데이터베이스 오류 처리
+    if (error.code === '42703') {
+      // 컬럼이 존재하지 않는 오류
+      return res.status(500).json({
+        success: false,
+        error: '데이터베이스 스키마 오류: users 테이블에 필요한 컬럼이 없습니다. 마이그레이션을 실행해주세요.',
+      })
+    }
+    
+    if (error.code === '23505') {
+      // Unique constraint violation
+      return res.status(400).json({
+        success: false,
+        error: '이미 등록된 이메일입니다.',
+      })
+    }
+    
     res.status(500).json({
       success: false,
       error: error.message || '회원가입 중 오류가 발생했습니다.',

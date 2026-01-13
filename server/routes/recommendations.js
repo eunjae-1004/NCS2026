@@ -216,7 +216,9 @@ router.get('/', async (req, res) => {
       if (step1Result.rows.length > 0) {
         // 1단계 결과가 있으면 ncs_main과 JOIN하여 상세 정보 가져오기
         const unitCodes = step1Result.rows.map(row => row.unit_code)
-        const placeholders = unitCodes.map((_, idx) => `$${idx + 1}`).join(', ')
+        // step1Params의 개수를 고려하여 파라미터 인덱스 시작점 계산
+        const paramStartIndex = step1Params.length + 1
+        const placeholders = unitCodes.map((_, idx) => `$${paramStartIndex + idx}`).join(', ')
         
         const step1DetailSql = `
           SELECT DISTINCT
